@@ -6,188 +6,76 @@
   <title>Family Duty Calendar</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Tailwind CDN (runtime) with a safelist for dynamic/conditional classes -->
-  <script>
-    // Safelist classes that appear in conditional strings so the CDN compiler generates them
-    // (Dynamic class names may be missed by Tailwind’s content scanner without a safelist.) 
-    // Ref: Tailwind safelist for dynamic classes. 
-    // Sources: Perficient blog; StackOverflow (v4 approach).  [5](https://accreditly.io/articles/how-to-use-tailwinds-safelist-to-handle-dynamic-classes)[6](https://stackoverflow.com/questions/79323991/how-is-it-possible-to-specify-a-safelist-in-tailwindcss-v4-is-it-possible-to-li)
-    window.tailwind = window.tailwind || {};
-    tailwind.config = {
-      safelist: [
-        "min-h-screen","bg-gradient-to-br","from-blue-50","to-indigo-100","p-4",
-        "max-w-4xl","mx-auto",
-        "bg-white","rounded-lg","shadow-lg","p-6","mb-6",
-        "text-3xl","font-bold","text-indigo-900","mb-2",
-        "flex","items-center","gap-2",
-        "text-gray-600","text-gray-700","text-gray-800","text-gray-500",
-        "grid","grid-cols-2","md:grid-cols-4","md:grid-cols-3","gap-2","gap-4",
-        "p-3","rounded-lg","font-medium","transition",
-        "bg-indigo-600","text-white",
-        "bg-gray-100","hover:bg-gray-200",
-        "text-2xl","text-lg","text-sm","text-xs","text-indigo-900","text-indigo-600",
-        "bg-gradient-to-br","from-indigo-50","to-blue-50","border-2","border-indigo-200",
-        "w-full","bg-gray-200","rounded-full","h-2","mt-3","transition-all","duration-300",
-        "flex-1","bg-green-600","hover:bg-green-700","bg-red-600","hover:bg-red-700",
-        "overflow-x-auto","pb-2","flex-shrink-0","px-4","py-3","mt-1",
-        "space-y-3","border-l-4","border-indigo-400","pl-4","mb-4",
-        "bg-green-50","border-green-300","border-green-400",
-        "bg-gray-50","border-gray-200","border-gray-300","hover:border-indigo-400",
-        "w-8","h-8","rounded-full","bg-green-500","bg-gray-300",
-        "mt-6","bg-blue-50","border-blue-400","p-4","rounded","items-start","text-blue-800",
-        "cursor-pointer","line-through"
-      ]
-    };
-  </script>
-  <script src="https://cdn.tailwindpt>
+  <!-- Tailwind (Play CDN) -->
+  https://cdn.tailwindcss.com</script>
 
-  <!-- React + ReactDOM UMD & Babel Standalone so JSX works on GitHub Pages w/out a build -->
-  <!-- Details on running React without a build step: -->
-  <!-- Buka Corner tutorial & Brian Holt’s “React without a Build Step”. [3](https://corner.buka.sh/building-react-applications-without-a-build-step-a-simple-approach/)[4](https://react-v9.holt.courses/lessons/no-frills-react/react-without-a-build-step) -->
-  https://unpkg.com/react@18/umd/react.production.min.js</script>
-  https://unpkg.com/react-dom@18/umd/react-dom.production.min.js</script>
+  <!-- React + ReactDOM (development UMD) + Babel Standalone -->
+  https://unpkg.com/react@18/umd/react.development.js</script>
+  https://unpkg.com/react-dom@18/umd/react-dom.development.js</script>
   https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js</script>
 
   <style>
-    /* Improve font rendering a bit */
     body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
   </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
   <div id="root"></div>
 
-  <script type="text/babel">
-    // Polyfill for your storage calls: window.storage.get/set -> localStorage
-    // (GitHub Pages is static; use localStorage for persistence in the browser.)
-    // Running React/JSX via CDN in the browser is a common lightweight approach for prototypes. [3](https://corner.buka.sh/building-react-applications-without-a-build-step-a-simple-approach/)[4](https://react-v9.holt.courses/lessons/no-frills-react/react-without-a-build-step)
-    window.storage = {
-      async get(key) {
-        const value = localStorage.getItem(key);
-        return value ? { value } : null;
-      },
-      async set(key, value) {
-        localStorage.setItem(key, value);
-        return true;
-      }
-    };
-
+  <!-- IMPORTANT: Babel needs presets for JSX/ESNext or you'll get a white page -->
+  <!-- data-presets="env,react" is the critical piece here.  [1](https://www.w3schools.com/css/css_grid.asp) -->
+  <script type="text/babel" data-presets="env,react">
     const { useState, useEffect } = React;
 
-    function FamilyDutyCalendar() {
-      const [selectedChild, setSelectedChild] = useState('parent');
-      const [selectedDay, setSelectedDay] = useState('Monday');
-      const [tasks, setTasks] = useState({});
-      const [showStats, setShowStats] = useState(false);
-
-      const children = ['Child 1', 'Child 2', 'Child 3'];
+    function App() {
+      const children = ['Moamen', 'Girls'];
       const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 
-      // Base schedule (copied to all days)
-      const initialSchedule = {
-        'Monday': [
-          { time: '7:00 AM', task: 'Wake up & make bed', child: 'Child 1' },
-          { time: '7:00 AM', task: 'Wake up & make bed', child: 'Child 2' },
-          { time: '7:00 AM', task: 'Wake up & make bed', child: 'Child 3' },
-          { time: '7:30 AM', task: 'Breakfast & clean dishes', child: 'Child 1' },
-          { time: '7:30 AM', task: 'Get ready for school', child: 'Child 2' },
-          { time: '7:30 AM', task: 'Get ready for school', child: 'Child 3' },
-          { time: '4:00 PM', task: 'Homework time', child: 'Child 1' },
-          { time: '4:00 PM', task: 'Homework time', child: 'Child 2' },
-          { time: '4:00 PM', task: 'Homework time', child: 'Child 3' },
-          { time: '6:00 PM', task: 'Set table for dinner', child: 'Child 1' },
-          { time: '7:00 PM', task: 'Clean room', child: 'Child 2' },
-          { time: '7:30 PM', task: 'Take out trash', child: 'Child 3' },
-          { time: '9:00 PM', task: 'Bedtime routine', child: 'Child 1' },
-          { time: '9:00 PM', task: 'Bedtime routine', child: 'Child 2' },
-          { time: '9:00 PM', task: 'Bedtime routine', child: 'Child 3' },
-        ]
-      };
-      days.forEach(d => { if (d !== 'Monday' && !initialSchedule[d]) initialSchedule[d] = [...initialSchedule['Monday']]; });
+      const [selectedChild, setSelectedChild] = useState(children[0]);
+      const [selectedDay, setSelectedDay] = useState('Monday');
+      const [data, setData] = useState(null);   // contents of schedule.json
+      const [error, setError] = useState(null);
+      const [showStats, setShowStats] = useState(false);
 
-      // Load tasks at mount
       useEffect(() => {
-        (async () => {
-          try {
-            const result = await window.storage.get('family-tasks');
-            if (result) {
-              setTasks(JSON.parse(result.value));
-            } else {
-              const initialTasks = {};
-              days.forEach(day => {
-                initialTasks[day] = {};
-                initialSchedule[day].forEach((item, idx) => {
-                  initialTasks[day][`${item.child}-${idx}`] = false;
-                });
-              });
-              setTasks(initialTasks);
-              await window.storage.set('family-tasks', JSON.stringify(initialTasks));
-            }
-          } catch {
-            // Fallback init
-            const initialTasks = {};
-            days.forEach(day => {
-              initialTasks[day] = {};
-              initialSchedule[day].forEach((item, idx) => {
-                initialTasks[day][`${item.child}-${idx}`] = false;
-              });
-            });
-            setTasks(initialTasks);
-          }
-        })();
+        fetch('schedule.json')
+          .then(r => r.ok ? r.json() : Promise.reject(new Error('Failed to load schedule.json')))
+          .then(j => setData(j))
+          .catch(e => setError(e));
       }, []);
 
-      const toggleTask = async (day, child, idx) => {
-        const taskKey = `${child}-${idx}`;
-        const newTasks = {
-          ...tasks,
-          [day]: {
-            ...tasks[day],
-            [taskKey]: !tasks[day]?.[taskKey]
-          }
+      // Helpers
+      function getTasks(day, child) {
+        if (!data) return [];
+        const entries = (data[child]?.[day] || []);
+        // sort by time if possible
+        const toMinutes = (t) => {
+          const m = (t || '').match(/(\d{1,2}):(\d{2})(?:\s*(AM|PM))?/i);
+          if (!m) return 0;
+          let h = parseInt(m[1],10), min = parseInt(m[2],10), ap = m[3];
+          if (ap) { if (ap.toUpperCase()==='PM' && h < 12) h += 12; if (ap.toUpperCase()==='AM' && h===12) h = 0; }
+          return h*60 + min;
         };
-        setTasks(newTasks);
-        try { await window.storage.set('family-tasks', JSON.stringify(newTasks)); } catch {}
-      };
+        return [...entries].sort((a,b) => toMinutes(a.time) - toMinutes(b.time));
+      }
 
-      const getChildTasks = (day, child) =>
-        (initialSchedule[day]?.filter(i => i.child === child) || []);
-
-      const getCompletionStats = (child) => {
-        let completed = 0, total = 0;
-        days.forEach(day => {
-          const childTasks = getChildTasks(day, child);
-          childTasks.forEach((_, idx) => {
-            const key = `${child}-${idx}`;
-            total++;
-            if (tasks[day]?.[key]) completed++;
-          });
+      function getStats(child) {
+        if (!data) return { completed:0, total:0, percentage:0 };
+        let total = 0, completed = 0;
+        days.forEach(d => {
+          const ts = data[child]?.[d] || [];
+          total += ts.length;
+          completed += ts.filter(x => x.task && x.task.toLowerCase() !== 'free').length;
         });
-        return { completed, total, percentage: total > 0 ? Math.round((completed/total)*100) : 0 };
-      };
+        const pct = total > 0 ? Math.round((completed/total)*100) : 0;
+        return { completed, total, percentage: pct };
+      }
 
-      const getDayCompletion = (day, child) => {
-        const childTasks = getChildTasks(day, child);
-        let completed = 0;
-        childTasks.forEach((_, idx) => {
-          const key = `${child}-${idx}`;
-          if (tasks[day]?.[key]) completed++;
-        });
-        return { completed, total: childTasks.length };
-      };
-
-      const resetWeek = async () => {
-        if (confirm('Are you sure you want to reset all tasks for the week?')) {
-          const resetTasks = {};
-          days.forEach(day => {
-            resetTasks[day] = {};
-            initialSchedule[day].forEach((item, idx) => {
-              resetTasks[day][`${item.child}-${idx}`] = false;
-            });
-          });
-          setTasks(resetTasks);
-          try { await window.storage.set('family-tasks', JSON.stringify(resetTasks)); } catch {}
-        }
-      };
+      if (error) {
+        return <div className="max-w-3xl mx-auto bg-white p-4 rounded-lg shadow">Error: {String(error)}</div>;
+      }
+      if (!data) {
+        return <div className="max-w-3xl mx-auto bg-white p-4 rounded-lg shadow">Loading schedule…</div>;
+      }
 
       return (
         <div className="max-w-4xl mx-auto">
@@ -196,7 +84,7 @@
             <h1 className="text-3xl font-bold text-indigo-900 mb-2 flex items-center gap-2">
               <span className="text-2xl">📅</span> Family Duty Calendar
             </h1>
-            <p className="text-gray-600">Track daily responsibilities and progress</p>
+            <p className="text-gray-600">Built from your Excel data (Moamen & Girls)</p>
           </div>
 
           {/* Who's viewing */}
@@ -206,105 +94,75 @@
               <span className="font-semibold text-gray-700">Who's viewing?</span>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              <button
-                onClick={() => { setSelectedChild('parent'); setShowStats(false); }}
-                className={`p-3 rounded-lg font-medium transition ${
-                  selectedChild === 'parent'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                👨‍👩‍👧‍👦 Parent
-              </button>
-              {children.map(child => (
+              {['Parent', ...children].map(label => (
                 <button
-                  key={child}
-                  onClick={() => { setSelectedChild(child); setShowStats(false); }}
+                  key={label}
+                  onClick={() => { setSelectedChild(label==='Parent' ? 'Parent' : label); setShowStats(false); }}
                   className={`p-3 rounded-lg font-medium transition ${
-                    selectedChild === child
+                    selectedChild === label
                       ? 'bg-indigo-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  {child}
+                  {label === 'Parent' ? '👨‍👩‍👧‍👦 Parent' : label}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Parent view: statistics */}
-          {selectedChild === 'parent' && showStats && (
-            <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-              <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <span>🏆</span> Weekly Progress Report
-              </h2>
-              <div className="grid md:grid-cols-3 gap-4">
-                {children.map(child => {
-                  const stats = getCompletionStats(child);
-                  return (
-                    <div key={child} className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-lg p-4 border-2 border-indigo-200">
-                      <h3 className="font-bold text-lg text-indigo-900 mb-2">{child}</h3>
-                      <div className="text-3xl font-bold text-indigo-600 mb-2">
-                        {stats.percentage}%
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        {stats.completed} of {stats.total} tasks completed
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
-                        <div
-                          className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${stats.percentage}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
+          {/* Parent stats */}
+          {selectedChild === 'Parent' && (
+            <>
+              <div className="bg-white rounded-lg shadow-lg p-4 mb-6 flex gap-3">
+                <button
+                  onClick={() => setShowStats(!showStats)}
+                  className="flex-1 bg-green-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-green-700 transition"
+                >
+                  {showStats ? 'Hide Statistics' : 'View Statistics'}
+                </button>
               </div>
-            </div>
+
+              {showStats && (
+                <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                  <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <span>🏆</span> Weekly Progress
+                  </h2>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {children.map(ch => {
+                      const s = getStats(ch);
+                      return (
+                        <div key={ch} className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-lg p-4 border-2 border-indigo-200">
+                          <h3 className="font-bold text-lg text-indigo-900 mb-2">{ch}</h3>
+                          <div className="text-3xl font-bold text-indigo-600 mb-2">{s.percentage}%</div>
+                          <div className="text-sm text-gray-600">{s.completed} of {s.total} planned slots</div>
+                          <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
+                            <div className="bg-indigo-600 h-2 rounded-full transition-all duration-300" style={{ width: `${s.percentage}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
-          {/* Parent controls */}
-          {selectedChild === 'parent' && (
-            <div className="bg-white rounded-lg shadow-lg p-4 mb-6 flex            <div className="bg-white rounded-lg shadow-lg p-4 mb-6 flex gap-3">
-              <button
-                onClick={() => setShowStats(!showStats)}
-                className="flex-1 bg-green-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-green-700 transition"
-              >
-                {showStats ? 'Hide Statistics' : 'View Statistics'}
-              </button>
-              <button
-                onClick={resetWeek}
-                className="flex-1 bg-red-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-red-700 transition"
-              >
-                Reset Week
-              </button>
-            </div>
-          )}
-
-          {/* Day tabs */}
+          {/* Day selection */}
           <div className="bg-white rounded-lg shadow-lg p-4 mb-6">
             <div className="flex overflow-x-auto gap-2 pb-2">
-              {days.map(day => {
-                const completion = selectedChild !== 'parent'
-                  ? getDayCompletion(day, selectedChild)
-                  : null;
-                return (
-                  <button
-                    key={day}
-                    onClick={() => setSelectedDay(day)}
-                    className={`flex-shrink-0 px-4 py-3 rounded-lg font-medium transition ${
-                      selectedDay === day
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    <div>{day}</div>
-                    {completion && (
-                      <div className="text-xs mt-1">{completion.completed}/{completion.total}</div>
-                    )}
-                  </button>
-                );
-              })}
+              {days.map(day => (
+                <button
+                  key={day}
+                  onClick={() => setSelectedDay(day)}
+                  className={`flex-shrink-0 px-4 py-3 rounded-lg font-medium transition ${
+                    selectedDay === day
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {day}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -312,83 +170,36 @@
           <div className="bg-white rounded-lg shadow-lg p-6">
             <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
               <span>⏰</span>
-              {selectedDay} – {selectedChild === 'parent' ? 'All Tasks' : `${selectedChild}'s Tasks`}
+              {selectedDay} — {selectedChild === 'Parent' ? 'All Tasks' : `${selectedChild}'s Tasks`}
             </h2>
 
             <div className="space-y-3">
-              {selectedChild === 'parent' ? (
-                // Parent sees all children’s tasks
-                children.map(child => {
-                  const childTasks = getChildTasks(selectedDay, child);
-                  return (
-                    <div key={child} className="border-l-4 border-indigo-400 pl-4 mb-4">
-                      <h3 className="font-bold text-lg text-indigo-900 mb-2">{child}</h3>
-                      {childTasks.map((item, idx) => {
-                        const taskKey = `${child}-${idx}`;
-                        const isCompleted = tasks[selectedDay]?.[taskKey];
-                        return (
-                          <div
-                            key={idx}
-                            className={`flex items-center gap-3 p-3 rounded-lg mb-2 transition ${
-                              isCompleted
-                                ? 'bg-green-50 border-2 border-green-300'
-                                : 'bg-gray-50 border-2 border-gray-200'
-                            }`}
-                          >
-                            <div className="flex-shrink-0 w-20 text-sm font-medium text-indigo-600">
-                              {item.time}
-                            </div>
-                            <div className={`flex-1 ${isCompleted ? 'line-through text-gray-500' : 'text-gray-800'}`}>
-                              {item.task}
-                            </div>
-                            {isCompleted && <span className="text-green-600 font-bold">✓</span>}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })
-              ) : (
-                // Child sees only their tasks
-                getChildTasks(selectedDay, selectedChild).map((item, idx) => {
-                  const taskKey = `${selectedChild}-${idx}`;
-                  const isCompleted = tasks[selectedDay]?.[taskKey];
-                  return (
-                    <div
-                      key={idx}
-                      className={`flex items-center gap-3 p-4 rounded-lg transition cursor-pointer ${
-                        isCompleted
-                          ? 'bg-green-50 border-2 border-green-400'
-                          : 'bg-gray-50 border-2 border-gray-300 hover:border-indigo-400'
-                      }`}
-                      onClick={() => toggleTask(selectedDay, selectedChild, idx)}
-                    >
-                      <div className="flex-shrink-0">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isCompleted ? 'bg-green-500' : 'bg-gray-300'}`}>
-                          <span className={`${isCompleted ? 'text-white' : 'text-gray-500'}`}>
-                            {isCompleted ? '✓' : '✕'}
-                          </span>
+              {selectedChild === 'Parent'
+                ? children.map(ch => (
+                    <div key={ch} className="border-l-4 border-indigo-400 pl-4 mb-4">
+                      <h3 className="font-bold text-lg text-indigo-900 mb-2">{ch}</h3>
+                      {getTasks(selectedDay, ch).map((item, i) => (
+                        <div key={i} className="flex items-center gap-3 p-3 rounded-lg mb-2 bg-gray-50 border-2 border-gray-200">
+                          <div className="flex-shrink-0 w-20 text-sm font-medium text-indigo-600">{item.time}</div>
+                          <div className="flex-1 text-gray-800">{item.task}</div>
                         </div>
-                      </div>
-                      <div className="flex-shrink-0 w-20 text-sm font-bold text-indigo-600">
-                        {item.time}
-                      </div>
-                      <div className={`flex-1 font-medium ${isCompleted ? 'line-through text-gray-500' : 'text-gray-800'}`}>
-                        {item.task}
-                      </div>
+                      ))}
                     </div>
-                  );
-                })
-              )}
+                  ))
+                : getTasks(selectedDay, selectedChild).map((item, i) => (
+                    <div key={i} className="flex items-center gap-3 p-4 rounded-lg bg-gray-50 border-2 border-gray-300">
+                      <div className="flex-shrink-0 w-20 text-sm font-bold text-indigo-600">{item.time}</div>
+                      <div className="flex-1 font-medium text-gray-800">{item.task}</div>
+                    </div>
+                  ))}
             </div>
           </div>
 
-          {/* Info footer */}
           <div className="mt-6 bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
             <div className="flex items-start gap-2">
               <span className="flex-shrink-0 mt-0.5">ℹ️</span>
               <div className="text-sm text-blue-800">
-                <strong>How it works:</strong> Kids can click on their tasks to mark them done. Parents can view everyone’s progress and reset the week when needed.
+                <strong>Tip:</strong> To update the data, replace <code>schedule.json</code> with a new export.
               </div>
             </div>
           </div>
@@ -396,6 +207,6 @@
       );
     }
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<FamilyDutyCalendar />);
+       ReactDOM.createRoot(document.getElementById('root')).render(<App />);
   </script>
 </body>
