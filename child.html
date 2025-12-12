@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Family Tasks - My Tasks</title>
+  <style>
+    :root{
+      --bg:#f6f8fc;--fg:#0f172a;--muted:#475569;--brand:#4f46e5;
+      --card:#fff;--border:#e2e8f0;
+      --child1:#3b82f6;--child2:#ec4899;--child3:#10b981;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;padding:0}
+    body{
+      background:linear-gradient(135deg,#eef2ff,#f8fafc);
+      font-family:system-ui,-apple-system,sans-serif;color:var(--fg)
+    }
+    .container{max-width:900px;margin:24px auto;padding:0 16px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 1px 3px rgba(16,24,40,.06);padding:24px;margin-bottom:24px}
+    h1{margin:0 0 8px;font-size:28px;color:#1e293b}
+    h2{margin:0 0 12px;font-size:20px;color:#1f2937}
+    .muted{color:var(--muted);font-size:14px}
+    .row{display:flex;gap:12px;align-items:center}
+    .between{justify-content:space-between}
+    .alert{background:#fff7ed;border:1px solid #fed7aa;color:#7c2d12;border-radius:10px;padding:10px 12px;margin-bottom:16px}
+
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+    .tab{border:1px solid var(--border);background:#f1f5f9;color:#0f172a;padding:8px 16px;border-radius:10px;cursor:pointer;font-weight:600;transition:all .2s}
+    .tab:hover{background:#e2e8f0}
+    .tab.active{color:#fff;border-color:transparent}
+    .tab.child1.active{background:var(--child1)}
+    .tab.child2.active{background:var(--child2)}
+    .tab.child3.active{background:var(--child3)}
+
+    .btn{display:inline-flex;align-items:center;gap:8px;background:var(--brand);color:#fff;border:none;border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:600;transition:all .2s}
+    .btn:hover{opacity:.9}
+    .btn.secondary{background:#64748b}
+    .cal-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .cal-controls select{border:1px solid var(--border);padding:8px 10px;border-radius:10px;background:#fff;font-size:14px}
+
+    .weekday-row{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:12px;color:#475569;font-weight:700;font-size:13px}
+    .weekday{padding:8px;text-align:center;background:#f1f5f9;border-radius:8px}
+
+    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:10px}
+    .daycell{min-height:96px;border:2px solid var(--border);background:#fff;border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:6px;cursor:pointer;transition:all .2s}
+    .daycell:hover{box-shadow:0 2px 8px rgba(79,70,229,.1)}
+    .daycell.selected{background:#f0fdf4}
+    .daycell.child1:hover,.daycell.child1.selected{border-color:var(--child1);background:#eff6ff}
+    .daycell.child2:hover,.daycell.child2.selected{border-color:var(--child2);background:#fdf2f8}
+    .daycell.child3:hover,.daycell.child3.selected{border-color:var(--child3);background:#f0fdf4}
+    .daynum{font-weight:700;font-size:16px}
+    .count{font-size:12px;color:#fff;border-radius:999px;padding:2px 8px;display:inline-block;font-weight:600}
+    .donebar{height:6px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-top:4px}
+    .donebar>span{display:block;height:100%;transition:width .3s}
+
+    .task{display:flex;gap:12px;align-items:center;border:2px solid;border-radius:10px;background:#fff;padding:12px;margin-bottom:8px;transition:all .2s}
+    .task.child1{border-color:var(--child1);background:#eff6ff}
+    .task.child2{border-color:var(--child2);background:#fdf2f8}
+    .task.child3{border-color:var(--child3);background:#f0fdf4}
+    .task.done{opacity:.6}
+    .task.done .title{text-decoration:line-through;color:#64748b}
+    .time{min-width:84px;font-weight:700;font-size:14px}
+    .title{flex:1;font-size:15px}
+
+    .day-nav{display:flex;gap:8px;align-items:center;margin-bottom:16px}
+    .day-nav .current-day{font-weight:700;color:#1e293b;font-size:16px;flex:1;text-align:center}
+
+    .cal-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+    .cal-title{font-weight:700;color:#1e293b;font-size:20px}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>My Tasks</h1>
+      <div class="muted">Check off your completed tasks each day!</div>
+    </div>
+
+    <div id="alertArea"></div>
+
+    <div class="card">
+      <div class="tabs" id="childTabs"></div>
+    </div>
+
+    <div class="card">
+      <div class="cal-header">
+        <div class="cal-title" id="calTitle">Month YYYY</div>
+        <div class="cal-controls">
+          <button class="btn secondary" id="prevMonthBtn">◀ Prev</button>
+          <button class="btn secondary" id="nextMonthBtn">Next ▶</button>
+          <select id="monthSelect"></select>
+          <select id="yearSelect"></select>
+        </div>
+      </div>
+      <div class="weekday-row" id="weekdayRow"></div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+
+    <div id="detailsPanel"></div>
+  </div>
+
+  <script type="module">
+    const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const DAY_NAMES   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const CHILDREN = ['Child 1','Child 2','Child 3'];
+    const CHILD_COLORS = {
+      'Child 1': 'child1',
+      'Child 2': 'child2',
+      'Child 3': 'child3'
+    };
+
+    const now = new Date();
+    let viewYear  = now.getFullYear();
+    let viewMonth = now.getMonth() + 1;
+    let selectedChild = CHILDREN[0];
+    let selectedDate  = null;
+
+    const $ = (sel) => document.querySelector(sel);
+    const el = (tag, attrs={}, ...kids) => {
+      const e = document.createElement(tag);
+      Object.entries(attrs).forEach(([k,v]) => {
+        if(k==='class') e.className=v;
+        else if(k==='html') e.innerHTML=v;
+        else if(k.startsWith('on')) e.addEventListener(k.slice(2), v);
+        else e.setAttribute(k,v);
+      });
+      kids.forEach(k => {
+        if(k==null) return;
+        e.appendChild(typeof k==='string' ? document.createTextNode(k) : k);
+      });
+      return e;
+    };
+    const pad = (n) => String(n).padStart(2,'0');
+    const daysInMonth = (y,m) => new Date(y, m, 0).getDate();
+    const toMinutes = (t) => {
+      const m = (t||'').match(/(\d{1,2}):(\d{2})(?:\s*(AM|PM))?/i);
+      if(!m) return 0;
+      let h=+m[1], min=+m[2], ap=(m[3]||'').toUpperCase();
+      if(ap==='PM'&&h<12) h+=12;
+      if(ap==='AM'&&h===12) h=0;
+      return h*60+min;
+    };
+
+    const showAlert = (msg) => {
+      const a = $('#alertArea');
+      a.innerHTML = '';
+      a.appendChild(el('div',{class:'alert'}, msg));
+    };
+    const clearAlert = () => { $('#alertArea').innerHTML=''; };
+
+    function renderChildTabs(){
+      const tabs = $('#childTabs');
+      tabs.innerHTML = '';
+      CHILDREN.forEach(c => {
+        tabs.appendChild(el('button',{
+          class: `tab ${CHILD_COLORS[c]}${selectedChild===c?' active':''}`,
+          onclick: () => {
+            selectedChild = c;
+            loadAndRender();
+            if(selectedDate) renderDetails();
+          }
+        }, c));
+      });
+    }
+
+    function renderControls(){
+      $('#calTitle').textContent = `${MONTH_NAMES[viewMonth-1]} ${viewYear}`;
+      
+      const ms = $('#monthSelect');
+      ms.innerHTML = '';
+      MONTH_NAMES.forEach((name, idx) => {
+        const opt = el('option',{value:String(idx+1)}, name);
+        if(idx+1===viewMonth) opt.selected=true;
+        ms.appendChild(opt);
+      });
+      ms.onchange = () => { viewMonth = parseInt(ms.value,10); loadAndRender(); };
+      
+      const ys = $('#yearSelect');
+      ys.innerHTML = '';
+      const base = now.getFullYear();
+      for(let y=base-5; y<=base+5; y++){
+        const opt = el('option',{value:String(y)}, String(y));
+        if(y===viewYear) opt.selected=true;
+        ys.appendChild(opt);
+      }
+      ys.onchange = () => { viewYear = parseInt(ys.value,10); loadAndRender(); };
+      
+      $('#prevMonthBtn').onclick = () => {
+        if(viewMonth===1){ viewMonth=12; viewYear--; }
+        else viewMonth--;
+        loadAndRender();
+      };
+      $('#nextMonthBtn').onclick = () => {
+        if(viewMonth===12){ viewMonth=1; viewYear++; }
+        else viewMonth++;
+        loadAndRender();
+      };
+    }
+
+    function renderWeekdayHeader(){
+      const row = $('#weekdayRow');
+      row.innerHTML = '';
+      DAY_NAMES.forEach(d => row.appendChild(el('div',{class:'weekday'}, d)));
+    }
+
+    async function renderCalendar(monthData={}){
+      renderChildTabs();
+      renderControls();
+      renderWeekdayHeader();
+      
+      const grid = $('#calGrid');
+      grid.innerHTML = '';
+      const y = viewYear, m = viewMonth;
+      const first = new Date(y,m-1,1), startDow = first.getDay(), dim = daysInMonth(y,m);
+
+      for(let i=0; i<startDow; i++) grid.appendChild(el('div',{class:'daycell'}));
+      
+      for(let d=1; d<=dim; d++){
+        const cell = el('div',{class:`daycell ${CHILD_COLORS[selectedChild]}`});
+        const top = el('div',{class:'row between'});
+        const num = el('div',{class:'daynum'}, String(d));
+        num.style.color = `var(--${CHILD_COLORS[selectedChild]})`;
+        
+        const byDay = monthData[pad(d)] || {};
+        const tasks = byDay[encodeURIComponent(selectedChild)] || {};
+        const arr = Object.values(tasks);
+        const total = arr.length;
+        const done = arr.filter(x => x.done).length;
+        
+        const badge = el('div',{class:'count'}, total ? `${done}/${total}` : '—');
+        badge.style.background = `var(--${CHILD_COLORS[selectedChild]})`;
+        top.append(num, badge);
+        
+        const bar = el('div',{class:'donebar'},
+          el('span',{style:`width:${total ? Math.round(done*100/total) : 0}%;background:var(--${CHILD_COLORS[selectedChild]})`})
+        );
+        
+        if(selectedDate && selectedDate.y===y && selectedDate.m===m && selectedDate.d===d){
+          cell.classList.add('selected');
+        }
+        
+        cell.onclick = () => {
+          selectedDate = { y, m, d };
+          renderDetails();
+          document.querySelectorAll('.daycell').forEach(c => c.classList.remove('selected'));
+          cell.classList.add('selected');
+        };
+        
+        cell.append(top, bar);
+        grid.appendChild(cell);
+      }
+    }
+
+    async function renderDetails(){
+      const panel = $('#detailsPanel');
+      panel.innerHTML = '';
+      
+      if(!selectedDate){
+        panel.appendChild(el('div',{class:'card'},
+          el('h2',{}, 'Pick a date'),
+          el('div',{class:'muted'}, 'Click any day on the calendar to view your tasks.')));
+        return;
+      }
+      
+      const {y,m,d} = selectedDate;
+      const dateStr = `${MONTH_NAMES[m-1]} ${d}, ${y}`;
+      const dayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(y,m-1,d).getDay()];
+      
+      const card = el('div',{class:'card'});
+      
+      // Day navigation
+      const dayNav = el('div',{class:'day-nav'});
+      const prevBtn = el('button',{class:'btn secondary', onclick: () => changeDay(-1)}, '◀ Previous Day');
+      const currentDay = el('div',{class:'current-day'}, `${dateStr} (${dayName}) - ${selectedChild}`);
+      const nextBtn = el('button',{class:'btn secondary', onclick: () => changeDay(1)}, 'Next Day ▶');
+      dayNav.append(prevBtn, currentDay, nextBtn);
+      
+      // Task list
+      const list = el('div',{style:'margin-top:16px'});
+      const items = await getDayTasksSafe(y,m,d,selectedChild);
+      
+      if(items.length===0){
+        list.appendChild(el('div',{class:'muted'}, 'No tasks for today. Enjoy your free time!'));
+      } else {
+        items.forEach(item => {
+          const row = el('div',{class:`task ${CHILD_COLORS[selectedChild]}${item.done?' done':''}`});
+          
+          const chk = el('input',{type:'checkbox'});
+          if(item.done) chk.checked = true;
+          chk.onchange = async () => {
+            await updateTaskSafe(y,m,d,selectedChild,item.id,{done: chk.checked});
+            row.classList.toggle('done', chk.checked);
+            await loadAndRender();
+          };
+          
+          const time = el('div',{class:'time'}, item.time||'');
+          time.style.color = `var(--${CHILD_COLORS[selectedChild]})`;
+          const title = el('div',{class:'title'}, item.title);
+          
+          row.append(chk, time, title);
+          list.appendChild(row);
+        });
+      }
+      
+      card.append(dayNav, list);
+      panel.appendChild(card);
+    }
+
+    function changeDay(offset){
+      if(!selectedDate) return;
+      const {y,m,d} = selectedDate;
+      const current = new Date(y,m-1,d);
+      current.setDate(current.getDate() + offset);
+      
+      viewYear = current.getFullYear();
+      viewMonth = current.getMonth() + 1;
+      selectedDate = {
+        y: viewYear,
+        m: viewMonth,
+        d: current.getDate()
+      };
+      
+      loadAndRender();
+      renderDetails();
+    }
+
+    /************** Firebase **************/
+    let db = null;
+    
+    try{
+      const { initializeApp } = await import('https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js');
+      const { getDatabase, ref, get, update } = await import('https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js');
+
+      const config = {
+        apiKey: "AIzaSyAYBoYhzz_zXGKGpv--9hAd_Tcs0GAheYk",
+        authDomain: "family-calendar-90fe4.firebaseapp.com",
+        databaseURL: "https://family-calendar-90fe4-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "family-calendar-90fe4",
+        storageBucket: "family-calendar-90fe4.firebasestorage.app",
+        messagingSenderId: "373576309858",
+        appId: "1:373576309858:web:57f83c225c1fdbc1b8453b",
+        measurementId: "G-H4DW4GG5KK"
+      };
+
+      const app = initializeApp(config);
+      db = getDatabase(app);
+
+      const monthRef = (y,m) => ref(db, `tasksByDate/${y}/${pad(m)}`);
+      const dayRef = (y,m,d,child) => ref(db, `tasksByDate/${y}/${pad(m)}/${pad(d)}/${encodeURIComponent(child)}`);
+      const taskPath = (y,m,d,child,id) => `tasksByDate/${y}/${pad(m)}/${pad(d)}/${encodeURIComponent(child)}/${id}`;
+
+      async function getMonthData(y,m){
+        try{
+          const snap = await get(monthRef(y,m));
+          clearAlert();
+          return snap.val() || {};
+        }catch(e){
+          showAlert('⚠ Unable to load month data');
+          return {};
+        }
+      }
+
+      window.getDayTasksSafe = async function(y,m,d,child){
+        try{
+          const snap = await get(dayRef(y,m,d,child));
+          clearAlert();
+          const obj = snap.val() || {};
+          return Object.values(obj).sort((a,b) => toMinutes(a.time) - toMinutes(b.time));
+        }catch(e){
+          showAlert('⚠ Unable to load tasks');
+          return [];
+        }
+      };
+
+      window.updateTaskSafe = async function(y,m,d,child,id,patch){
+        try{
+          await update(ref(db, taskPath(y,m,d,child,id)), patch);
+          clearAlert();
+        }catch(e){
+          showAlert('⚠ Unable to update task');
+        }
+      };
+
+      window.loadAndRender = async function(){
+        const monthData = await getMonthData(viewYear, viewMonth);
+        await renderCalendar(monthData);
+      };
+
+      await loadAndRender();
+
+    }catch(err){
+      showAlert('⚠ Firebase failed to load. Check your connection.');
+      console.error(err);
+    }
+  </script>
+</body>
+</html>
