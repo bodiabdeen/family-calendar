@@ -9,8 +9,7 @@
   <style>
     :root{
       --bg:#f6f8fc;--fg:#0f172a;--muted:#475569;--brand:#4f46e5;
-      --card:#fff;--border:#e2e8f0;--success:#10b981;--danger:#ef4444;
-      --warn:#f59e0b;
+      --card:#fff;--border:#e2e8f0;--success:#10b981;--danger:#ef4444;--warn:#f59e0b;
     }
     html,body{height:100%}
     body{
@@ -22,7 +21,6 @@
     .p-16{padding:16px}.p-24{padding:24px}.mb-16{margin-bottom:16px}.mb-24{margin-bottom:24px}
     h1{margin:0 0 8px;font-size:28px;color:#1e293b} h2{margin:0 0 12px;font-size:20px;color:#1f2937} h3{margin:0 0 8px;font-size:16px;color:#1f2937}
     .row{display:flex;gap:12px;align-items:center} .between{justify-content:space-between} .muted{color:var(--muted)}
-    /* Alert banner */
     .alert{background:#fff7ed;border:1px solid #fed7aa;color:#7c2d12;border-radius:10px;padding:10px 12px}
 
     /* Tabs */
@@ -37,23 +35,17 @@
     .grid{display:grid;gap:12px} .grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
     @media (max-width:720px){.grid-3{grid-template-columns:repeat(1,minmax(0,1fr))}}
 
-    /* Calendar layout (CSS Grid) */
+    /* Calendar layout */
     .cal-header{display:flex;align-items:center;justify-content:space-between;gap:12px}
     .cal-title{font-weight:700;color:#1e293b}
     .cal-controls{display:flex;gap:8px;align-items:center}
     .cal-controls select{border:1px solid var(--border);padding:8px 10px;border-radius:10px;background:#fff}
 
-    .weekday-row{
-      display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:12px;color:#475569;font-weight:700
-    }
+    .weekday-row{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:12px;color:#475569;font-weight:700}
     .weekday{padding:8px;text-align:center;background:#f1f5f9;border-radius:8px}
 
-    .cal-grid{
-      display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:10px
-    }
-    .daycell{
-      min-height:96px;border:1px solid var(--border);background:#fff;border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:6px
-    }
+    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:10px}
+    .daycell{min-height:96px;border:1px solid var(--border);background:#fff;border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:6px}
     .daynum{font-weight:700;color:#4338ca}
     .count{font-size:12px;color:#334155;background:#e2e8f0;border-radius:999px;padding:2px 8px;display:inline-block}
     .donebar{height:6px;background:#e2e8f0;border-radius:999px;overflow:hidden}
@@ -62,6 +54,10 @@
     .task{display:flex;gap:12px;align-items:center;border:1px solid var(--border);border-radius:10px;background:#f8fafc;padding:10px}
     .time{min-width:84px;color:#4338ca;font-weight:700}
     .task.done .title{text-decoration:line-through;color:#64748b}
+
+    /* Debug panel */
+    .debug{background:#f8fafc;border:1px dashed #cbd5e1;border-radius:10px;padding:12px;font-size:13px;color:#334155}
+    .debug code{background:#e2e8f0;padding:2px 6px;border-radius:6px}
   </style>
 </head>
 <body>
@@ -71,7 +67,10 @@
       <div class="muted">Parent: manage tasks. Children: mark tasks done. View by month/year.</div>
     </div>
 
-    <!-- Alert area (shows DB errors instead of crashing silently) -->
+    <!-- Debug area -->
+    <div id="debugArea" class="debug mb-16" style="display:none"></div>
+
+    <!-- Top alerts -->
     <div id="alertArea" class="mb-16"></div>
 
     <div class="card p-16 mb-24"><div class="tabs" id="roleTabs"></div></div>
@@ -87,7 +86,6 @@
           <select id="yearSelect"></select>
         </div>
       </div>
-
       <div class="weekday-row" id="weekdayRow"></div>
       <div class="cal-grid" id="calGrid"></div>
     </div>
@@ -98,152 +96,44 @@
     <div class="card p-16 mb-24">
       <strong>Tip:</strong> Data is stored in Firebase Realtime Database per calendar date.
       <div class="muted">Path: <code>tasksByDate/&lt;YYYY&gt;/&lt;MM&gt;/&lt;DD&gt;/&lt;child&gt;/&lt;taskId&gt;</code></div>
+      <div class="muted" style="margin-top:6px">On GitHub Pages, add an empty <code>.nojekyll</code> file at the site root to prevent asset rewriting. [2](https://www.w3schools.com/howto/howto_google_fonts.asp)</div>
     </div>
   </div>
 
-  <!-- Firebase SDKs via CDN (ES Modules) -->
+  <!-- Firebase ESM CDN imports (pattern recommended by official docs) -->
+  <!-- Docs: Use https://www.gstatic.com/firebasejs/<version>/firebase-SERVICE.js for browser modules. [1](https://firebase.google.com/docs/web/setup) -->
   <script type="module">
-    /************** Firebase imports **************/
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-    import {
-      getDatabase, ref, get, set, push, update, remove, onValue
-    } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
-
-    /************** Your Firebase config (inserted) **************/
-    const firebaseConfig = {
-      apiKey: "AIzaSyAYBoYhzz_zXGKGpv--9hAd_Tcs0GAheYk",
-      authDomain: "family-calendar-90fe4.firebaseapp.com",
-      databaseURL: "https://family-calendar-90fe4-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "family-calendar-90fe4",
-      storageBucket: "family-calendar-90fe4.firebasestorage.app",
-      messagingSenderId: "373576309858",
-      appId: "1:373576309858:web:57f83c225c1fdbc1b8453b",
-      measurementId: "G-H4DW4GG5KK"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db  = getDatabase(app);
-
-    /************** App state **************/
-    const DAY_NAMES   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']; // header
+    /************** Local boot (runs before any DB call) **************/
     const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const DAY_NAMES   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
     const now = new Date();
     let viewYear  = now.getFullYear();
-    let viewMonth = now.getMonth() + 1;              // 1..12
+    let viewMonth = now.getMonth() + 1;
     let role = 'Parent';
-    let children = ['Child 1','Child 2','Child 3'];   // default; replaced by DB if present
+    let children = ['Child 1','Child 2','Child 3'];   // default; overwritten by DB if present
     let selectedChild = children[0];
-    let selectedDate  = null;                         // { y,m,d }
+    let selectedDate  = null;
 
-    // DB refs
-    const childrenRef = ref(db, "children");
-    const monthRef    = (y,m) => ref(db, `tasksByDate/${y}/${pad(m)}`);
-    const dayRef      = (y,m,d,child) => ref(db, `tasksByDate/${y}/${pad(m)}/${pad(d)}/${encodeURIComponent(child)}`);
-
-    // Helpers
     const $  = (sel, root=document) => root.querySelector(sel);
-    const el = (tag, attrs={}, ...kids) => {
-      const e = document.createElement(tag);
-      Object.entries(attrs).forEach(([k,v])=>{
-        if(k==='class') e.className=v; else if(k==='html') e.innerHTML=v; else if(k.startsWith('on')) e.addEventListener(k.slice(2), v); else e.setAttribute(k,v);
-      });
-      kids.forEach(k => { if(k==null) return; e.appendChild(typeof k==='string' ? document.createTextNode(k) : k); });
+    const el = (tag, attrs={}, ...kids) => { const e=document.createElement(tag);
+      Object.entries(attrs).forEach(([k,v])=>{ if(k==='class') e.className=v; else if(k==='html') e.innerHTML=v; else if(k.startsWith('on')) e.addEventListener(k.slice(2), v); else e.setAttribute(k,v); });
+      kids.forEach(k=>{ if(k==null) return; e.appendChild(typeof k==='string' ? document.createTextNode(k) : k); });
       return e;
     };
     const pad = (n) => String(n).padStart(2,'0');
-    const toMinutes = (t) => {
-      const m = (t||'').match(/(\d{1,2}):(\d{2})(?:\s*(AM|PM))?/i);
-      if(!m) return 0;
-      let h = parseInt(m[1],10), min = parseInt(m[2],10), ap = (m[3]||'').toUpperCase();
-      if(ap==='PM' && h<12) h+=12; if(ap==='AM' && h===12) h=0; return h*60+min;
+    const daysInMonth = (y,m) => new Date(y, m, 0).getDate();
+    const toMinutes   = (t) => { const m=(t||'').match(/(\d{1,2}):(\d{2})(?:\s*(AM|PM))?/i); if(!m) return 0;
+      let h=+m[1], min=+m[2], ap=(m[3]||'').toUpperCase(); if(ap==='PM'&&h<12) h+=12; if(ap==='AM'&&h===12) h=0; return h*60+min; };
+
+    let lastError = null;
+    const debug = (obj) => { const d=$('#debugArea'); d.style.display='block'; d.innerHTML = '';
+      d.appendChild(el('div',{}, el('strong',{},'Debug:')));
+      d.appendChild(el('pre',{}, JSON.stringify(obj, null, 2)));
     };
-    const daysInMonth = (y,m) => new Date(y, m, 0).getDate(); // leap-safe
+    const showAlert = (msg) => { const a=$('#alertArea'); a.innerHTML=''; a.appendChild(el('div',{class:'alert'}, msg)); };
+    const clearAlert= () => { $('#alertArea').innerHTML=''; };
 
-    const taskPath = (y,m,d,child,id) =>
-      `tasksByDate/${y}/${pad(m)}/${pad(d)}/${encodeURIComponent(child)}/${id}`;
-
-    // Alert banner
-    function showAlert(msg){
-      const area = $('#alertArea');
-      area.innerHTML = '';
-      area.appendChild(el('div',{class:'alert'}, msg));
-    }
-    function clearAlert(){
-      const area = $('#alertArea'); area.innerHTML = '';
-    }
-
-    /************** Data functions (with try/catch) **************/
-    async function ensureChildrenList(){
-      try{
-        const snap = await get(childrenRef);
-        if (snap.exists()) children = snap.val();
-        else await set(childrenRef, children);
-        selectedChild = children[0] || 'Child 1';
-        clearAlert();
-      }catch(e){
-        console.error('children read error', e);
-        showAlert('⚠ Unable to read “children” from Firebase (rules or connectivity). Using local defaults.');
-      }
-    }
-
-    async function getMonthData(y,m){
-      try{
-        const snap = await get(monthRef(y,m));
-        clearAlert();
-        return snap.val() || {};
-      }catch(e){
-        console.error('month read error', e);
-        showAlert('⚠ Unable to read month data. Calendar will show zero counts.');
-        return {};
-      }
-    }
-
-    async function getDayTasks(y,m,d,child){
-      try{
-        const snap = await get(dayRef(y,m,d,child));
-        clearAlert();
-        const obj  = snap.val() || {};
-        return Object.values(obj).sort((a,b)=> toMinutes(a.time)-toMinutes(b.time));
-      }catch(e){
-        console.error('day read error', e);
-        showAlert('⚠ Unable to read tasks for the selected day.');
-        return [];
-      }
-    }
-
-    async function addTask(y,m,d,child,title,time=""){
-      try{
-        const newRef = push(dayRef(y,m,d,child));
-        await set(newRef, { id:newRef.key, title, time, done:false });
-        clearAlert();
-      }catch(e){
-        console.error('add error', e);
-        showAlert('⚠ Unable to add task. Check Firebase rules and connectivity.');
-      }
-    }
-
-    async function updateTask(y,m,d,child,id,patch){
-      try{
-        await update(ref(db, taskPath(y,m,d,child,id)), patch);
-        clearAlert();
-      }catch(e){
-        console.error('update error', e);
-        showAlert('⚠ Unable to update task. Check Firebase rules and connectivity.');
-      }
-    }
-
-    async function deleteTask(y,m,d,child,id){
-      try{
-        await remove(ref(db, taskPath(y,m,d,child,id)));
-        clearAlert();
-      }catch(e){
-        console.error('delete error', e);
-        showAlert('⚠ Unable to delete task. Check Firebase rules and connectivity.');
-      }
-    }
-
-    /************** Calendar rendering **************/
     function renderRoleTabs(){
       const tabs = $('#roleTabs'); tabs.innerHTML='';
       ['Parent', ...children].forEach(r=>{
@@ -253,175 +143,175 @@
         ));
       });
     }
-
     function renderControls(){
-      // Always render these (UI shouldn’t depend on DB)
       $('#calTitle').textContent = `${MONTH_NAMES[viewMonth-1]} ${viewYear}`;
-
-      const ms = $('#monthSelect'); ms.innerHTML='';
-      MONTH_NAMES.forEach((name, idx)=>{
-        const opt = el('option', {value:String(idx+1)}, name);
-        if(idx+1===viewMonth) opt.selected = true;
-        ms.appendChild(opt);
-      });
+      const ms=$('#monthSelect'); ms.innerHTML='';
+      MONTH_NAMES.forEach((name, idx)=>{ const opt=el('option',{value:String(idx+1)}, name); if(idx+1===viewMonth) opt.selected=true; ms.appendChild(opt); });
       ms.onchange = ()=>{ viewMonth = parseInt(ms.value,10); renderCalendar(); renderDetails(); };
-
-      const ys = $('#yearSelect'); ys.innerHTML='';
-      const base = now.getFullYear();
-      for(let y=base-5; y<=base+5; y++){
-        const opt = el('option', {value:String(y)}, String(y));
-        if(y===viewYear) opt.selected = true;
-        ys.appendChild(opt);
-      }
+      const ys=$('#yearSelect'); ys.innerHTML='';
+      const base=now.getFullYear(); for(let y=base-5; y<=base+5; y++){ const opt=el('option',{value:String(y)}, String(y)); if(y===viewYear) opt.selected=true; ys.appendChild(opt); }
       ys.onchange = ()=>{ viewYear = parseInt(ys.value,10); renderCalendar(); renderDetails(); };
-
       $('#prevMonthBtn').onclick = ()=>{ if(viewMonth===1){ viewMonth=12; viewYear--; } else viewMonth--; renderCalendar(); renderDetails(); };
       $('#nextMonthBtn').onclick = ()=>{ if(viewMonth===12){ viewMonth=1; viewYear++; } else viewMonth++; renderCalendar(); renderDetails(); };
     }
-
     function renderWeekdayHeader(){
       const row = $('#weekdayRow'); row.innerHTML='';
       DAY_NAMES.forEach(d=> row.appendChild(el('div',{class:'weekday'}, d)));
     }
+    async function renderCalendar(monthData={}){
+      renderRoleTabs(); renderControls(); renderWeekdayHeader();
+      const grid=$('#calGrid'); grid.innerHTML='';
+      const y=viewYear, m=viewMonth;
+      const first=new Date(y,m-1,1), startDow=first.getDay(), dim=daysInMonth(y,m);
 
-    async function renderCalendar(){
-      renderRoleTabs();
-      renderControls();
-      renderWeekdayHeader();
-
-      const grid = $('#calGrid'); grid.innerHTML='';
-      const y = viewYear, m = viewMonth;
-      const first = new Date(y, m-1, 1);
-      const startDow = first.getDay();              // 0=Sun..6=Sat
-      const dim = daysInMonth(y,m);                 // leap-safe
-
-      // Safely load month data
-      const monthData = await getMonthData(y,m);
-
-      // Leading blanks
-      for(let i=0;i<startDow;i++){ grid.appendChild(el('div',{class:'daycell'})); }
-
-      // Day cells
+      for(let i=0;i<startDow;i++) grid.appendChild(el('div',{class:'daycell'}));
       for(let d=1; d<=dim; d++){
-        const cell = el('div',{class:'daycell'});
-        const dayTop = el('div',{class:'row between'});
-        const dayNum = el('div',{class:'daynum'}, String(d));
-
-        // counts for selected child
-        let total=0, done=0;
+        const cell=el('div',{class:'daycell'}), top=el('div',{class:'row between'}), num=el('div',{class:'daynum'}, String(d));
         const byDay = ((monthData[pad(d)]||{})[encodeURIComponent(selectedChild)])||{};
-        const tasks = Object.values(byDay);
-        total = tasks.length;
-        done  = tasks.filter(x=>x.done).length;
-
-        const countBadge = el('div',{class:'count'}, total ? `${done}/${total}` : '—');
-        dayTop.append(dayNum, countBadge);
-
-        const bar = el('div',{class:'donebar'}, el('span',{style:`width:${total? Math.round(done*100/total):0}%;`}));
-
+        const arr = Object.values(byDay), total=arr.length, done=arr.filter(x=>x.done).length;
+        const badge=el('div',{class:'count'}, total ? `${done}/${total}` : '—'); top.append(num,badge);
+        const bar=el('div',{class:'donebar'}, el('span',{style:`width:${total? Math.round(done*100/total):0}%;`}));
         cell.onclick = ()=>{ selectedDate = { y, m, d }; renderDetails(); };
-        cell.append(dayTop, bar);
-        grid.appendChild(cell);
+        cell.append(top, bar); grid.appendChild(cell);
       }
     }
-
     async function renderDetails(){
-      const panel = $('#detailsPanel'); panel.innerHTML='';
+      const panel=$('#detailsPanel'); panel.innerHTML='';
       if(!selectedDate){
         panel.appendChild(el('div',{class:'card p-24 mb-24'},
           el('h2',{}, 'Pick a date'),
-          el('div',{class:'muted'}, 'Click any day in the calendar to view/add tasks.')));
+          el('div',{class:'muted'}, 'Click any day to view/add tasks.')));
         return;
       }
-      const {y,m,d} = selectedDate;
+      const {y,m,d}=selectedDate;
+      const header=el('div',{class:'card p-24 mb-16'});
+      header.append(el('div',{class:'row between'}, el('h2',{}, `${MONTH_NAMES[m-1]} ${d}, ${y} — ${role==='Parent' ? 'All children (manage)' : `${role}'s tasks`}`),
+        el('div',{class:'muted'}, `${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(y,m-1,d).getDay()]}`)));
+      if(role==='Parent'){ const ct=el('div',{class:'tabs mb-16'}); children.forEach(c=> ct.appendChild(el('button',{class:'tab'+(selectedChild===c?' active':''), onclick:()=>{selectedChild=c; renderDetails();}}, c))); header.appendChild(ct); }
+      else selectedChild = role;
 
-      const header = el('div',{class:'card p-24 mb-16'});
-      header.append(
-        el('div',{class:'row between'},
-          el('h2',{}, `${MONTH_NAMES[m-1]} ${d}, ${y} — ${role==='Parent' ? 'All children (manage)' : `${role}'s tasks`}`),
-          el('div',{class:'muted'}, `${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(y,m-1,d).getDay()]}`)
-        )
-      );
-
+      const form=el('div',{class:'card p-24 mb-16'});
       if(role==='Parent'){
-        const childTabs = el('div',{class:'tabs mb-16'});
-        children.forEach(c=> childTabs.appendChild(el('button',
-          {class:'tab'+(selectedChild===c?' active':''), onclick:()=>{selectedChild=c; renderDetails();}}, c)));
-        header.appendChild(childTabs);
-      } else {
-        selectedChild = role;
-      }
+        const ti=el('input',{class:'input',placeholder:'Time (optional, e.g. 07:30)'}), tt=el('input',{class:'input',placeholder:'Task title'});
+        const add=el('button',{class:'btn', onclick:async()=>{ const t=tt.value.trim(), time=ti.value.trim(); if(!t){alert('Please enter a task title'); return;}
+          await addTask(y,m,d,selectedChild,t,time); tt.value=''; ti.value=''; await loadMonthAndRefresh(); await renderDetails(); }}, 'Add task');
+        form.append(el('div',{class:'grid grid-3'}, el('div',{},ti), el('div',{},tt), el('div',{},add)));
+      } else form.append(el('div',{class:'muted'}, 'Mark your tasks done by ticking the box.'));
 
-      const form = el('div',{class:'card p-24 mb-16'});
-      if(role==='Parent'){
-        const timeIn  = el('input',{class:'input',placeholder:'Time (optional, e.g. 07:30)'});
-        const titleIn = el('input',{class:'input',placeholder:'Task title'});
-        const addBtn  = el('button',{class:'btn', onclick:async ()=>{
-          const t = titleIn.value.trim(); const ti = timeIn.value.trim();
-          if(!t){ alert('Please enter a task title'); return; }
-          await addTask(y,m,d,selectedChild,t,ti);
-          titleIn.value=''; timeIn.value='';
-          renderCalendar(); renderDetails();
-        }}, 'Add task');
-        form.append(el('div',{class:'grid grid-3'}, el('div',{},timeIn), el('div',{},titleIn), el('div',{},addBtn)));
-      } else {
-        form.append(el('div',{class:'muted'}, 'Mark your tasks done by ticking the box.'));
-      }
-
-      const listWrap = el('div',{class:'card p-24 mb-24'});
-      const list = el('div'); listWrap.appendChild(list);
-      const items = await getDayTasks(y,m,d,selectedChild);
-      if(items.length===0){
-        list.appendChild(el('div',{class:'muted'}, 'No tasks yet.'));
-      } else {
-        items.forEach(item=>{
-          const row   = el('div',{class:'task'+(item.done?' done':'')});
-          const chk   = el('input',{type:'checkbox',checked:item.done?true:false, onchange:async()=>{
-            await updateTask(y,m,d,selectedChild,item.id,{done: chk.checked});
-            row.classList.toggle('done', chk.checked);
-            renderCalendar(); // update month counts/bar
-          }});
-          const time  = el('div',{class:'time'}, item.time||'');
-          const title = el('div',{class:'title',contenteditable: role==='Parent' ? 'true' : 'false', onblur:async()=>{
-            const newTitle = title.textContent.trim() || item.title;
-            if(role==='Parent' && newTitle !== item.title){
-              await updateTask(y,m,d,selectedChild,item.id,{title:newTitle});
-              renderCalendar();
-            }
-          }}, item.title);
-          const del   = (role==='Parent')
-            ? el('button',{class:'btn danger', onclick:async()=>{
-                if(confirm('Delete this task?')){ await deleteTask(y,m,d,selectedChild,item.id); renderCalendar(); renderDetails(); }
-              }}, 'Delete')
-            : null;
-          row.append(chk, time, title);
-          if(del) row.appendChild(el('div',{style:'margin-left:auto'}, del));
-          list.appendChild(row);
-        });
-      }
-
+      const listWrap=el('div',{class:'card p-24 mb-24'}), list=el('div'); listWrap.appendChild(list);
+      const items = await getDayTasksSafe(y,m,d,selectedChild);
+      if(items.length===0) list.appendChild(el('div',{class:'muted'}, 'No tasks yet.'));
+      else items.forEach(item=>{
+        const row=el('div',{class:'task'+(item.done?' done':'')});
+        const chk=el('input',{type:'checkbox',checked:item.done?true:false, onchange:async()=>{
+          await updateTaskSafe(y,m,d,selectedChild,item.id,{done: chk.checked});
+          row.classList.toggle('done', chk.checked);
+          await loadMonthAndRefresh();
+        }});
+        const time=el('div',{class:'time'}, item.time||''), title=el('div',{class:'title',contenteditable: role==='Parent' ? 'true' : 'false', onblur:async()=>{
+          const newTitle=title.textContent.trim()||item.title;
+          if(role==='Parent' && newTitle!==item.title){ await updateTaskSafe(y,m,d,selectedChild,item.id,{title:newTitle}); await loadMonthAndRefresh(); }
+        }}, item.title);
+        const del=(role==='Parent') ? el('button',{class:'btn danger', onclick:async()=>{
+          if(confirm('Delete this task?')){ await deleteTaskSafe(y,m,d,selectedChild,item.id); await loadMonthAndRefresh(); await renderDetails(); }
+        }}, 'Delete') : null;
+        row.append(chk,time,title); if(del) row.appendChild(el('div',{style:'margin-left:auto'}, del));
+        list.appendChild(row);
+      });
       panel.append(header, form, listWrap);
     }
 
-    /************** Init **************/
-    (async function init(){
-      // Render static UI first so you never see placeholders
-      renderRoleTabs();
-      renderControls();
-      renderWeekdayHeader();
-      renderCalendar();
-      renderDetails();
+    /************** Firebase (defensive init & helpers) **************/
+    let firebaseOk = false, db = null, configUsed = null;
 
-      // Then try DB loads (robust to failures)
-      await ensureChildrenList();
-      renderRoleTabs();           // refresh tabs if children came from DB
-      renderCalendar();           // recompute month counts
-      // details panel remains as-is until date is selected
-    })();
+    try{
+      // Import ESM modules from the official CDN (pattern per docs). [1](https://firebase.google.com/docs/web/setup)
+      const { initializeApp } = await import('https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js');
+      const { getDatabase, ref, get, set, push, update, remove } = await import('https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js');
 
-    // Last-resort global error display
-    window.addEventListener('error', (ev)=>{
-      showAlert('⚠ A script error occurred. Open DevTools →      showAlert('⚠ A script error occurred. Open DevTools → Console for details.');
+      // Your config:
+      configUsed = {
+        apiKey: "AIzaSyAYBoYhzz_zXGKGpv--9hAd_Tcs0GAheYk",
+        authDomain: "family-calendar-90fe4.firebaseapp.com",
+        databaseURL: "https://family-calendar-90fe4-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "family-calendar-90fe4",
+        storageBucket: "family-calendar-90fe4.firebasestorage.app",
+        messagingSenderId: "373576309858",
+        appId: "1:373576309858:web:57f83c225c1fdbc1b8453b",
+        measurementId: "G-H4DW4GG5KK"
+      };
+
+      const app = initializeApp(configUsed);
+      db = getDatabase(app);
+      firebaseOk = true;
+
+      // Refs & paths
+      const childrenRef = ref(db, "children");
+      const monthRef    = (y,m) => ref(db, `tasksByDate/${y}/${pad(m)}`);
+      const dayRef      = (y,m,d,child) => ref(db, `tasksByDate/${y}/${pad(m)}/${pad(d)}/${encodeURIComponent(child)}`);
+      const taskPath    = (y,m,d,child,id) => `tasksByDate/${y}/${pad(m)}/${pad(d)}/${encodeURIComponent(child)}/${id}`;
+
+      // Safe wrappers (with UI feedback)
+      async function ensureChildrenList(){
+        try{
+          const snap = await get(childrenRef);
+          if (snap.exists()) children = snap.val();
+          else await set(childrenRef, children);
+          selectedChild = children[0] || 'Child 1';
+          clearAlert();
+        }catch(e){ lastError=e; showAlert('⚠ Unable to read “children”. Using local defaults.'); }
+      }
+      async function getMonthData(y,m){
+        try{ const snap = await get(monthRef(y,m)); clearAlert(); return snap.val() || {}; }
+        catch(e){ lastError=e; showAlert('⚠ Unable to read month data. Calendar will show zero counts.'); return {}; }
+      }
+      async function getDayTasksSafe(y,m,d,child){
+        try{ const snap = await get(dayRef(y,m,d,child)); clearAlert(); const obj=snap.val()||{}; return Object.values(obj).sort((a,b)=> toMinutes(a.time)-toMinutes(b.time)); }
+        catch(e){ lastError=e; showAlert('⚠ Unable to read tasks for the selected day.'); return []; }
+      }
+      async function addTask(y,m,d,child,title,time=""){ try{ const newRef=push(dayRef(y,m,d,child)); await set(newRef,{ id:newRef.key,title,time,done:false }); clearAlert(); }catch(e){ lastError=e; showAlert('⚠ Unable to add task.'); } }
+      async function updateTaskSafe(y,m,d,child,id,patch){ try{ await update(ref(db, taskPath(y,m,d,child,id)), patch); clearAlert(); }catch(e){ lastError=e; showAlert('⚠ Unable to update task.'); } }
+      async function deleteTaskSafe(y,m,d,child,id){ try{ await remove(ref(db, taskPath(y,m,d,child,id))); clearAlert(); }catch(e){ lastError=e; showAlert('⚠ Unable to delete task.'); } }
+
+      // Expose for calendar functions
+      window.getDayTasksSafe = getDayTasksSafe;
+      window.updateTaskSafe  = updateTaskSafe;
+      window.deleteTaskSafe  = deleteTaskSafe;
+      window.addTask         = addTask;
+
+      // Initial UI (render first, then DB)
+      renderRoleTabs(); renderControls(); renderWeekdayHeader();
+      const monthData = await getMonthData(viewYear, viewMonth);
+      await renderCalendar(monthData);
+      await ensureChildrenList();                     // load children from DB (or create defaults)
+      renderRoleTabs();                               // refresh tabs after DB
+      const refreshed = await getMonthData(viewYear, viewMonth);
+      await renderCalendar(refreshed);
+
+    }catch(importErr){
+      // Firebase import failed (network/CSP/etc.)
+      lastError = importErr;
+      showAlert('⚠ Firebase modules failed to load. Check console/network or try jsDelivr ESM (+esm) CDN if needed. [4](https://www.jsdelivr.com/package/npm/firebase)');
+    }
+
+    // Always show debugging info so you see exactly what's happening
+    debug({
+      moduleLoaded: true,
+      firebaseOk,
+      databaseURL_in_code: configUsed?.databaseURL || '(no config)',
+      viewYear, viewMonth,
+      children_local: children,
+      lastError: lastError ? String(lastError) : null
+    });
+
+    // Global errors → banner
+       window.addEventListener('error', ev=>{
+      lastError = ev.error || ev.message;
+      showAlert('⚠ A script error occurred. See Debug panel and DevTools → Console for details.');
+      debug({
+        moduleLoaded: true, firebaseOk, databaseURL_in_code: configUsed?.databaseURL || '(no config)',
+        viewYear, viewMonth, children_local: children, lastError: String(lastError)
+      });
     });
   </script>
 </body>
