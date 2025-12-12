@@ -8,7 +8,7 @@
     :root{
       --mycolor:#ec4899;
       --bg:#f6f8fc;--fg:#0f172a;--muted:#475569;
-      --card:#fff;--border:#e2e8f0;
+      --card:#fff;--border:#e2e8f0;--danger:#ef4444;
     }
     *{box-sizing:border-box}
     html,body{height:100%;margin:0;padding:0}
@@ -28,6 +28,13 @@
     .btn{display:inline-flex;align-items:center;gap:8px;background:var(--mycolor);color:#fff;border:none;border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:600;transition:all .2s}
     .btn:hover{opacity:.9}
     .btn.secondary{background:#64748b}
+    .btn.danger{background:var(--danger)}
+    .btn.sm{padding:6px 10px;font-size:13px}
+    .input{border:1px solid var(--border);padding:10px 12px;border-radius:10px;width:100%;font-size:14px}
+    .textarea{border:1px solid var(--border);padding:10px 12px;border-radius:10px;width:100%;font-size:14px;resize:vertical;min-height:60px}
+    .grid{display:grid;gap:12px}
+    .grid-3{grid-template-columns:1fr 2fr auto}
+    @media (max-width:720px){.grid-3{grid-template-columns:1fr}}
     
     .cal-wrapper{margin-bottom:24px}
     .cal-wrapper.collapsed .cal-content{display:none}
@@ -49,16 +56,19 @@
     .daycell{min-height:70px;border:2px solid var(--border);background:#fff;border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:4px;cursor:pointer;transition:all .2s}
     .daycell:hover{border-color:var(--mycolor);box-shadow:0 2px 8px rgba(236,72,153,.1)}
     .daycell.selected{border-color:var(--mycolor);background:#fdf2f8}
+    .daycell.today{border-color:#10b981;border-width:3px}
     .daynum{font-weight:700;font-size:14px;color:var(--mycolor)}
     .count{font-size:11px;color:#fff;border-radius:999px;padding:2px 6px;display:inline-block;font-weight:600;background:var(--mycolor)}
     .donebar{height:4px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-top:2px}
     .donebar>span{display:block;height:100%;transition:width .3s;background:var(--mycolor)}
 
-    .task{display:flex;gap:12px;align-items:center;border:2px solid var(--mycolor);border-radius:10px;background:#fdf2f8;padding:12px;margin-bottom:8px;transition:all .2s}
-    .task.done{opacity:.6}
-    .task.done .title{text-decoration:line-through;color:#64748b}
+    .task{display:flex;gap:12px;border:2px solid var(--mycolor);border-radius:10px;background:#fdf2f8;padding:12px;margin-bottom:8px;transition:all .2s;flex-direction:column}
+    .task.done .task-main .title{text-decoration:line-through;color:#64748b}
+    .task-main{display:flex;gap:12px;align-items:center}
     .time{min-width:84px;font-weight:700;font-size:14px;color:var(--mycolor)}
     .title{flex:1;font-size:15px}
+    .task-notes{margin-top:8px;padding:8px;background:#f8fafc;border-radius:6px;font-size:13px;color:#475569;border-left:3px solid var(--mycolor)}
+    .task-notes-input{width:100%;border:1px solid var(--border);padding:6px 8px;border-radius:6px;font-size:13px;resize:vertical;min-height:50px}
 
     .day-nav{display:flex;gap:8px;align-items:center;margin-bottom:16px}
     .day-nav .current-day{font-weight:700;color:#1e293b;font-size:16px;flex:1;text-align:center}
@@ -68,10 +78,12 @@
   <div class="container">
     <div class="card">
       <h1>👋 Child 2 - My Tasks</h1>
-      <div class="muted">Check off your completed tasks each day!</div>
+      <div class="muted">Check off your completed tasks, add notes, and create your own tasks!</div>
     </div>
 
     <div id="alertArea"></div>
+
+    <div id="detailsPanel"></div>
 
     <div class="card cal-wrapper collapsed">
       <button class="cal-toggle" id="calToggle">
@@ -92,8 +104,6 @@
         <div class="cal-grid" id="calGrid"></div>
       </div>
     </div>
-
-    <div id="detailsPanel"></div>
   </div>
 
   <script type="module">
@@ -104,7 +114,7 @@
     const now = new Date();
     let viewYear  = now.getFullYear();
     let viewMonth = now.getMonth() + 1;
-    let selectedDate  = null;
+    let selectedDate  = {y: now.getFullYear(), m: now.getMonth() + 1, d: now.getDate()};
 
     const $ = (sel) => document.querySelector(sel);
     const el = (tag, attrs={}, ...kids) => {
@@ -191,11 +201,14 @@
       grid.innerHTML = '';
       const y = viewYear, m = viewMonth;
       const first = new Date(y,m-1,1), startDow = first.getDay(), dim = daysInMonth(y,m);
+      const today = new Date();
+      const isToday = (d) => y===today.getFullYear() && m===today.getMonth()+1 && d===today.getDate();
 
       for(let i=0; i<startDow; i++) grid.appendChild(el('div',{class:'daycell'}));
       
       for(let d=1; d<=dim; d++){
         const cell = el('div',{class:'daycell'});
+        if(isToday(d)) cell.classList.add('today');
         const top = el('div',{class:'row between'});
         const num = el('div',{class:'daynum'}, String(d));
         
@@ -250,6 +263,19 @@
       const currentDay = el('div',{class:'current-day'}, `${dateStr} (${dayName})`);
       const nextBtn = el('button',{class:'btn secondary', onclick: () => changeDay(1)}, 'Next Day ▶');
       dayNav.append(prevBtn, currentDay, nextBtn);
+
+      const form = el('div',{style:'margin:16px 0'});
+      const ti = el('input',{class:'input',placeholder:'Time (e.g. 07:30 AM)'});
+      const tt = el('input',{class:'input',placeholder:'Task title'});
+      const add = el('button',{class:'btn', onclick: async () => {
+        const t = tt.value.trim(), time = ti.value.trim();
+        if(!t){ alert('Please enter a task title'); return; }
+        await addTask(y,m,d,MY_CHILD,t,time,MY_CHILD);
+        tt.value=''; ti.value='';
+        await loadAndRender();
+        await renderDetails();
+      }}, 'Add My Task');
+      form.appendChild(el('div',{class:'grid grid-3'}, ti, tt, add));
       
       const list = el('div',{style:'margin-top:16px'});
       const items = await getDayTasksSafe(y,m,d,MY_CHILD);
@@ -259,6 +285,8 @@
       } else {
         items.forEach(item => {
           const row = el('div',{class:`task${item.done?' done':''}`});
+          
+          const taskMain = el('div',{class:'task-main'});
           
           const chk = el('input',{type:'checkbox'});
           if(item.done) chk.checked = true;
@@ -271,12 +299,33 @@
           const time = el('div',{class:'time'}, item.time||'');
           const title = el('div',{class:'title'}, item.title);
           
-          row.append(chk, time, title);
+          taskMain.append(chk, time, title);
+          
+          if(item.createdBy === MY_CHILD){
+            const del = el('button',{class:'btn danger sm', onclick: async () => {
+              if(confirm('Delete this task?')){
+                await deleteTaskSafe(y,m,d,MY_CHILD,item.id);
+                await loadAndRender();
+                await renderDetails();
+              }
+            }}, 'Delete');
+            taskMain.appendChild(el('div',{style:'margin-left:auto'}, del));
+          }
+          
+          const notesArea = el('textarea',{class:'task-notes-input',placeholder:'Add notes...'}, item.notes||'');
+          notesArea.onblur = async () => {
+            const newNotes = notesArea.value.trim();
+            if(newNotes !== (item.notes||'')){
+              await updateTaskSafe(y,m,d,MY_CHILD,item.id,{notes:newNotes});
+            }
+          };
+          
+          row.append(taskMain, notesArea);
           list.appendChild(row);
         });
       }
       
-      card.append(dayNav, list);
+      card.append(dayNav, form, list);
       panel.appendChild(card);
     }
 
@@ -303,7 +352,7 @@
     
     try{
       const { initializeApp } = await import('https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js');
-      const { getDatabase, ref, get, update } = await import('https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js');
+      const { getDatabase, ref, get, set, push, update, remove } = await import('https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js');
 
       const config = {
         apiKey: "AIzaSyAYBoYhzz_zXGKGpv--9hAd_Tcs0GAheYk",
@@ -346,6 +395,16 @@
         }
       };
 
+      window.addTask = async function(y,m,d,child,title,time="",createdBy="parent",notes=""){
+        try{
+          const newRef = push(dayRef(y,m,d,child));
+          await set(newRef, {id:newRef.key, title, time, done:false, createdBy, notes: notes||""});
+          clearAlert();
+        }catch(e){
+          showAlert('⚠ Unable to add task');
+        }
+      };
+
       window.updateTaskSafe = async function(y,m,d,child,id,patch){
         try{
           await update(ref(db, taskPath(y,m,d,child,id)), patch);
@@ -355,12 +414,22 @@
         }
       };
 
+      window.deleteTaskSafe = async function(y,m,d,child,id){
+        try{
+          await remove(ref(db, taskPath(y,m,d,child,id)));
+          clearAlert();
+        }catch(e){
+          showAlert('⚠ Unable to delete task');
+        }
+      };
+
       window.loadAndRender = async function(){
         const monthData = await getMonthData(viewYear, viewMonth);
         await renderCalendar(monthData);
       };
 
       await loadAndRender();
+      await renderDetails();
 
     }catch(err){
       showAlert('⚠ Firebase failed to load. Check your connection.');
