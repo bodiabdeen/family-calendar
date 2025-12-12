@@ -10,6 +10,7 @@
     :root{
       --bg:#f6f8fc;--fg:#0f172a;--muted:#475569;--brand:#4f46e5;
       --card:#fff;--border:#e2e8f0;--success:#10b981;--danger:#ef4444;
+      --warn:#f59e0b;
     }
     html,body{height:100%}
     body{
@@ -21,6 +22,9 @@
     .p-16{padding:16px}.p-24{padding:24px}.mb-16{margin-bottom:16px}.mb-24{margin-bottom:24px}
     h1{margin:0 0 8px;font-size:28px;color:#1e293b} h2{margin:0 0 12px;font-size:20px;color:#1f2937} h3{margin:0 0 8px;font-size:16px;color:#1f2937}
     .row{display:flex;gap:12px;align-items:center} .between{justify-content:space-between} .muted{color:var(--muted)}
+    /* Alert banner */
+    .alert{background:#fff7ed;border:1px solid #fed7aa;color:#7c2d12;border-radius:10px;padding:10px 12px}
+
     /* Tabs */
     .tabs{display:flex;gap:8px;flex-wrap:wrap}
     .tab{border:1px solid var(--border);background:#f1f5f9;color:#0f172a;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:600}
@@ -66,6 +70,9 @@
       <h1>Family Tasks Calendar</h1>
       <div class="muted">Parent: manage tasks. Children: mark tasks done. View by month/year.</div>
     </div>
+
+    <!-- Alert area (shows DB errors instead of crashing silently) -->
+    <div id="alertArea" class="mb-16"></div>
 
     <div class="card p-16 mb-24"><div class="tabs" id="roleTabs"></div></div>
 
@@ -118,15 +125,14 @@
     const db  = getDatabase(app);
 
     /************** App state **************/
-    const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']; // header
+    const DAY_NAMES   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']; // header
     const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-    // Today
     const now = new Date();
     let viewYear  = now.getFullYear();
     let viewMonth = now.getMonth() + 1;              // 1..12
     let role = 'Parent';
-    let children = ['Child 1','Child 2','Child 3'];   // loaded from DB
+    let children = ['Child 1','Child 2','Child 3'];   // default; replaced by DB if present
     let selectedChild = children[0];
     let selectedDate  = null;                         // { y,m,d }
 
@@ -154,40 +160,87 @@
     };
     const daysInMonth = (y,m) => new Date(y, m, 0).getDate(); // leap-safe
 
-    /************** Data functions (date-based) **************/
-    async function ensureChildrenList(){
-      const snap = await get(childrenRef);
-      if (snap.exists()) children = snap.val();
-      else await set(childrenRef, children);
-      selectedChild = children[0] || 'Child 1';
-    }
-
-    async function getMonthData(y,m){ // whole month for all children
-      const snap = await get(monthRef(y,m));
-      return snap.val() || {}; // shape: { "01": { "<child>": {...} }, "02": {...} }
-    }
-
-    async function getDayTasks(y,m,d,child){
-      const snap = await get(dayRef(y,m,d,child));
-      const obj  = snap.val() || {};
-      return Object.values(obj).sort((a,b)=> toMinutes(a.time)-toMinutes(b.time));
-    }
-
-    async function addTask(y,m,d,child,title,time=""){
-      const newRef = push(dayRef(y,m,d,child));
-      await set(newRef, { id:newRef.key, title, time, done:false });
-    }
-
-    // ✅ FIX: build the full absolute path to the task document
     const taskPath = (y,m,d,child,id) =>
       `tasksByDate/${y}/${pad(m)}/${pad(d)}/${encodeURIComponent(child)}/${id}`;
 
+    // Alert banner
+    function showAlert(msg){
+      const area = $('#alertArea');
+      area.innerHTML = '';
+      area.appendChild(el('div',{class:'alert'}, msg));
+    }
+    function clearAlert(){
+      const area = $('#alertArea'); area.innerHTML = '';
+    }
+
+    /************** Data functions (with try/catch) **************/
+    async function ensureChildrenList(){
+      try{
+        const snap = await get(childrenRef);
+        if (snap.exists()) children = snap.val();
+        else await set(childrenRef, children);
+        selectedChild = children[0] || 'Child 1';
+        clearAlert();
+      }catch(e){
+        console.error('children read error', e);
+        showAlert('⚠ Unable to read “children” from Firebase (rules or connectivity). Using local defaults.');
+      }
+    }
+
+    async function getMonthData(y,m){
+      try{
+        const snap = await get(monthRef(y,m));
+        clearAlert();
+        return snap.val() || {};
+      }catch(e){
+        console.error('month read error', e);
+        showAlert('⚠ Unable to read month data. Calendar will show zero counts.');
+        return {};
+      }
+    }
+
+    async function getDayTasks(y,m,d,child){
+      try{
+        const snap = await get(dayRef(y,m,d,child));
+        clearAlert();
+        const obj  = snap.val() || {};
+        return Object.values(obj).sort((a,b)=> toMinutes(a.time)-toMinutes(b.time));
+      }catch(e){
+        console.error('day read error', e);
+        showAlert('⚠ Unable to read tasks for the selected day.');
+        return [];
+      }
+    }
+
+    async function addTask(y,m,d,child,title,time=""){
+      try{
+        const newRef = push(dayRef(y,m,d,child));
+        await set(newRef, { id:newRef.key, title, time, done:false });
+        clearAlert();
+      }catch(e){
+        console.error('add error', e);
+        showAlert('⚠ Unable to add task. Check Firebase rules and connectivity.');
+      }
+    }
+
     async function updateTask(y,m,d,child,id,patch){
-      await update(ref(db, taskPath(y,m,d,child,id)), patch);
+      try{
+        await update(ref(db, taskPath(y,m,d,child,id)), patch);
+        clearAlert();
+      }catch(e){
+        console.error('update error', e);
+        showAlert('⚠ Unable to update task. Check Firebase rules and connectivity.');
+      }
     }
 
     async function deleteTask(y,m,d,child,id){
-      await remove(ref(db, taskPath(y,m,d,child,id)));
+      try{
+        await remove(ref(db, taskPath(y,m,d,child,id)));
+        clearAlert();
+      }catch(e){
+        console.error('delete error', e);
+        showAlert('⚠ Unable to delete task. Check Firebase rules and connectivity.');
+      }
     }
 
     /************** Calendar rendering **************/
@@ -202,18 +255,17 @@
     }
 
     function renderControls(){
+      // Always render these (UI shouldn’t depend on DB)
       $('#calTitle').textContent = `${MONTH_NAMES[viewMonth-1]} ${viewYear}`;
 
-      // Month select
       const ms = $('#monthSelect'); ms.innerHTML='';
       MONTH_NAMES.forEach((name, idx)=>{
         const opt = el('option', {value:String(idx+1)}, name);
         if(idx+1===viewMonth) opt.selected = true;
         ms.appendChild(opt);
       });
-      ms.addEventListener('change', ()=>{ viewMonth = parseInt(ms.value,10); renderCalendar(); renderDetails(); });
+      ms.onchange = ()=>{ viewMonth = parseInt(ms.value,10); renderCalendar(); renderDetails(); };
 
-      // Year select (range current-5 .. current+5)
       const ys = $('#yearSelect'); ys.innerHTML='';
       const base = now.getFullYear();
       for(let y=base-5; y<=base+5; y++){
@@ -221,9 +273,8 @@
         if(y===viewYear) opt.selected = true;
         ys.appendChild(opt);
       }
-      ys.addEventListener('change', ()=>{ viewYear = parseInt(ys.value,10); renderCalendar(); renderDetails(); });
+      ys.onchange = ()=>{ viewYear = parseInt(ys.value,10); renderCalendar(); renderDetails(); };
 
-      // Nav
       $('#prevMonthBtn').onclick = ()=>{ if(viewMonth===1){ viewMonth=12; viewYear--; } else viewMonth--; renderCalendar(); renderDetails(); };
       $('#nextMonthBtn').onclick = ()=>{ if(viewMonth===12){ viewMonth=1; viewYear++; } else viewMonth++; renderCalendar(); renderDetails(); };
     }
@@ -244,7 +295,7 @@
       const startDow = first.getDay();              // 0=Sun..6=Sat
       const dim = daysInMonth(y,m);                 // leap-safe
 
-      // Load all month data once
+      // Safely load month data
       const monthData = await getMonthData(y,m);
 
       // Leading blanks
@@ -256,7 +307,7 @@
         const dayTop = el('div',{class:'row between'});
         const dayNum = el('div',{class:'daynum'}, String(d));
 
-        // compute counts for selected child
+        // counts for selected child
         let total=0, done=0;
         const byDay = ((monthData[pad(d)]||{})[encodeURIComponent(selectedChild)])||{};
         const tasks = Object.values(byDay);
@@ -266,13 +317,10 @@
         const countBadge = el('div',{class:'count'}, total ? `${done}/${total}` : '—');
         dayTop.append(dayNum, countBadge);
 
-        // bar
         const bar = el('div',{class:'donebar'}, el('span',{style:`width:${total? Math.round(done*100/total):0}%;`}));
 
-        // click to open details
         cell.onclick = ()=>{ selectedDate = { y, m, d }; renderDetails(); };
         cell.append(dayTop, bar);
-
         grid.appendChild(cell);
       }
     }
@@ -287,7 +335,6 @@
       }
       const {y,m,d} = selectedDate;
 
-      // Header
       const header = el('div',{class:'card p-24 mb-16'});
       header.append(
         el('div',{class:'row between'},
@@ -296,7 +343,6 @@
         )
       );
 
-      // If Parent: child tabs
       if(role==='Parent'){
         const childTabs = el('div',{class:'tabs mb-16'});
         children.forEach(c=> childTabs.appendChild(el('button',
@@ -306,7 +352,6 @@
         selectedChild = role;
       }
 
-      // Add form (Parent only)
       const form = el('div',{class:'card p-24 mb-16'});
       if(role==='Parent'){
         const timeIn  = el('input',{class:'input',placeholder:'Time (optional, e.g. 07:30)'});
@@ -315,14 +360,14 @@
           const t = titleIn.value.trim(); const ti = timeIn.value.trim();
           if(!t){ alert('Please enter a task title'); return; }
           await addTask(y,m,d,selectedChild,t,ti);
-          titleIn.value=''; timeIn.value=''; renderCalendar(); renderDetails();
+          titleIn.value=''; timeIn.value='';
+          renderCalendar(); renderDetails();
         }}, 'Add task');
         form.append(el('div',{class:'grid grid-3'}, el('div',{},timeIn), el('div',{},titleIn), el('div',{},addBtn)));
       } else {
         form.append(el('div',{class:'muted'}, 'Mark your tasks done by ticking the box.'));
       }
 
-      // Task list for selectedChild on this date
       const listWrap = el('div',{class:'card p-24 mb-24'});
       const list = el('div'); listWrap.appendChild(list);
       const items = await getDayTasks(y,m,d,selectedChild);
@@ -341,7 +386,7 @@
             const newTitle = title.textContent.trim() || item.title;
             if(role==='Parent' && newTitle !== item.title){
               await updateTask(y,m,d,selectedChild,item.id,{title:newTitle});
-              renderCalendar(); // reflect change if needed
+              renderCalendar();
             }
           }}, item.title);
           const del   = (role==='Parent')
@@ -360,10 +405,23 @@
 
     /************** Init **************/
     (async function init(){
-      await ensureChildrenList();
+      // Render static UI first so you never see placeholders
       renderRoleTabs();
-      renderCalendar      renderCalendar();
+      renderControls();
+      renderWeekdayHeader();
+      renderCalendar();
       renderDetails();
+
+      // Then try DB loads (robust to failures)
+      await ensureChildrenList();
+      renderRoleTabs();           // refresh tabs if children came from DB
+      renderCalendar();           // recompute month counts
+      // details panel remains as-is until date is selected
     })();
+
+    // Last-resort global error display
+    window.addEventListener('error', (ev)=>{
+      showAlert('⚠ A script error occurred. Open DevTools →      showAlert('⚠ A script error occurred. Open DevTools → Console for details.');
+    });
   </script>
 </body>
