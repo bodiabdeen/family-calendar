@@ -152,7 +152,7 @@
       let h = parseInt(m[1],10), min = parseInt(m[2],10), ap = (m[3]||'').toUpperCase();
       if(ap==='PM' && h<12) h+=12; if(ap==='AM' && h===12) h=0; return h*60+min;
     };
-    const daysInMonth = (y,m) => new Date(y, m, 0).getDate(); // handles leap years well. [3](https://coreui.io/answers/how-to-get-the-number-of-days-in-a-month-in-javascript/)
+    const daysInMonth = (y,m) => new Date(y, m, 0).getDate(); // leap-safe
 
     /************** Data functions (date-based) **************/
     async function ensureChildrenList(){
@@ -178,12 +178,16 @@
       await set(newRef, { id:newRef.key, title, time, done:false });
     }
 
+    // ✅ FIX: build the full absolute path to the task document
+    const taskPath = (y,m,d,child,id) =>
+      `tasksByDate/${y}/${pad(m)}/${pad(d)}/${encodeURIComponent(child)}/${id}`;
+
     async function updateTask(y,m,d,child,id,patch){
-      await update(ref(db, `${dayRef(y,m,d,child).key}/${id}`), patch);
+      await update(ref(db, taskPath(y,m,d,child,id)), patch);
     }
 
     async function deleteTask(y,m,d,child,id){
-      await remove(ref(db, `${dayRef(y,m,d,child).key}/${id}`));
+      await remove(ref(db, taskPath(y,m,d,child,id)));
     }
 
     /************** Calendar rendering **************/
@@ -238,7 +242,7 @@
       const y = viewYear, m = viewMonth;
       const first = new Date(y, m-1, 1);
       const startDow = first.getDay();              // 0=Sun..6=Sat
-      const dim = daysInMonth(y,m);                 // number of days this month (leap-safe). [3](https://coreui.io/answers/how-to-get-the-number-of-days-in-a-month-in-javascript/)
+      const dim = daysInMonth(y,m);                 // leap-safe
 
       // Load all month data once
       const monthData = await getMonthData(y,m);
@@ -251,7 +255,6 @@
         const cell = el('div',{class:'daycell'});
         const dayTop = el('div',{class:'row between'});
         const dayNum = el('div',{class:'daynum'}, String(d));
-        const iso = `${y}-${pad(m)}-${pad(d)}`;
 
         // compute counts for selected child
         let total=0, done=0;
@@ -331,13 +334,14 @@
           const chk   = el('input',{type:'checkbox',checked:item.done?true:false, onchange:async()=>{
             await updateTask(y,m,d,selectedChild,item.id,{done: chk.checked});
             row.classList.toggle('done', chk.checked);
-            renderCalendar(); // update count bar
+            renderCalendar(); // update month counts/bar
           }});
           const time  = el('div',{class:'time'}, item.time||'');
           const title = el('div',{class:'title',contenteditable: role==='Parent' ? 'true' : 'false', onblur:async()=>{
             const newTitle = title.textContent.trim() || item.title;
             if(role==='Parent' && newTitle !== item.title){
               await updateTask(y,m,d,selectedChild,item.id,{title:newTitle});
+              renderCalendar(); // reflect change if needed
             }
           }}, item.title);
           const del   = (role==='Parent')
@@ -356,12 +360,10 @@
 
     /************** Init **************/
     (async function init(){
-      // Weekday header labels come from common calendar structures (7 columns) used with CSS Grid. [1](https://www.freecodecamp.org/news/how-to-build-a-calendar-with-css-grid/)[5](https://dev.to/tailwine/css-grid-creating-a-calendar-layout-3909)
       await ensureChildrenList();
       renderRoleTabs();
-      renderCalendar();
+      renderCalendar      renderCalendar();
       renderDetails();
     })();
   </script>
 </body>
-</html>
