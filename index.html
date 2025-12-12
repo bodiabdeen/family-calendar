@@ -2,51 +2,33 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Family Tasks</title>
+
   <style>
-    :root{
-      --bg: #f6f8fc; --fg:#0f172a; --muted:#475569; --brand:#4f46e5; --brand-2:#6366f1;
-      --card:#ffffff; --border:#e2e8f0; --success:#10b981; --danger:#ef4444; --warn:#f59e0b;
-    }
+    :root{--bg:#f6f8fc;--fg:#0f172a;--muted:#475569;--brand:#4f46e5;--card:#fff;--border:#e2e8f0;--success:#10b981;--danger:#ef4444}
     html,body{height:100%}
     body{margin:0;background:linear-gradient(135deg,#eef2ff,#f8fafc);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--fg)}
     .container{max-width:1000px;margin:24px auto;padding:0 16px}
     .card{background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 1px 3px rgba(16,24,40,.06)}
     .p-16{padding:16px}.p-24{padding:24px}.mb-16{margin-bottom:16px}.mb-24{margin-bottom:24px}
-    h1{margin:0 0 8px;font-size:28px;color:#1e293b}
-    h2{margin:0 0 12px;font-size:20px;color:#1f2937}
-    h3{margin:0 0 8px;font-size:16px;color:#1f2937}
-    .row{display:flex;gap:12px;align-items:center}
-    .between{justify-content:space-between}.center{align-items:center}
+    h1{margin:0 0 8px;font-size:28px;color:#1e293b} h2{margin:0 0 12px;font-size:20px;color:#1f2937} h3{margin:0 0 8px;font-size:16px;color:#1f2937}
+    .row{display:flex;gap:12px;align-items:center} .between{justify-content:space-between}
     .tabs{display:flex;gap:8px;flex-wrap:wrap}
     .tab{border:1px solid var(--border);background:#f1f5f9;color:#0f172a;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:600}
     .tab.active{background:var(--brand);color:#fff;border-color:transparent}
     .muted{color:var(--muted)}
     .btn{display:inline-flex;align-items:center;gap:8px;background:var(--brand);color:#fff;border:none;border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:600}
-    .btn.alt{background:#e2e8f0;color:#0f172a}
-    .btn.danger{background:var(--danger)}
-    .btn.success{background:var(--success)}
-    .btn:disabled{opacity:.6;cursor:not-allowed}
-    .grid{display:grid;gap:12px}
-    .grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
-    .grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
-    .grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}
-    @media (max-width:720px){.grid-3,.grid-4{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media (max-width:540px){.grid-2,.grid-3,.grid-4{grid-template-columns:repeat(1,minmax(0,1fr))}}
-    .input, select{border:1px solid var(--border);padding:10px 12px;border-radius:10px;font:inherit;width:100%;background:#fff}
+    .btn.alt{background:#e2e8f0;color:#0f172a} .btn.danger{background:var(--danger)}
+    .grid{display:grid;gap:12px} .grid-3{grid-template-columns:repeat(3,minmax(0,1fr))} .grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    @media (max-width:720px){.grid-3,.grid-2{grid-template-columns:repeat(1,minmax(0,1fr))}}
+    .input{border:1px solid var(--border);padding:10px 12px;border-radius:10px;width:100%}
     .task{display:flex;gap:12px;align-items:center;border:1px solid var(--border);border-radius:10px;background:#f8fafc;padding:10px}
     .time{min-width:84px;color:#4338ca;font-weight:700}
     .task.done .title{text-decoration:line-through;color:#64748b}
-    .task .actions{margin-left:auto;display:flex;gap:6px}
-    .pill{display:inline-block;background:#e2e8f0;color:#0f172a;border-radius:999px;padding:2px 10px;font-size:12px}
     .bar{height:8px;background:#e2e8f0;border-radius:999px;overflow:hidden}
-    .bar>span{display:block;height:100%;background:var(--brand);}
-    .help{background:#eff6ff;border-left:4px solid #60a5fa;padding:12px;border-radius:8px}
-    .spacer{height:4px}
-    .danger-text{color:var(--danger)}
-    .nowrap{white-space:nowrap}
+    .bar>span{display:block;height:100%;background:var(--brand)}
   </style>
 </head>
 <body>
@@ -56,225 +38,225 @@
       <div class="muted">Select who is viewing, manage tasks (Parent), or mark them done (Children).</div>
     </div>
 
-    <div class="card p-16 mb-24">
-      <div class="tabs" id="roleTabs"></div>
-    </div>
-
+    <div class="card p-16 mb-24"><div class="tabs" id="roleTabs"></div></div>
     <div id="content"></div>
 
-    <div class="card p-16 mb-24 help">
-      <strong>Tip:</strong> All data is saved in your browser. Use Export/Import (Parent view) to back up or move data.
+    <div class="card p-16 mb-24">
+      <strong>Tip:</strong> Data is stored centrally in Firebase Realtime Database.
     </div>
   </div>
 
-<script>
-(function(){
-  const DAY_NAMES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-  const DEFAULT_CHILDREN = ['Child 1','Child 2','Child 3'];
-  const KEY = 'family-tasks-v1';
+  <!-- Firebase SDKs via CDN (ES Modules) -->
+  <script type="module">
+    /************** 1) IMPORT FIREBASE MODULES **************/
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+    import {
+      getDatabase, ref, get, set, push, update, remove, onValue
+    } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
-  // ==== State & Storage ====
-  function defaultData(){
-    const daysObj = () => DAY_NAMES.reduce((a,d)=> (a[d]=[], a), {});
-    const obj = { children:[...DEFAULT_CHILDREN], tasks:{} };
-    obj.children.forEach(c => { obj.tasks[c] = daysObj(); });
-    return obj;
-  }
-  function load(){
-    try{ const raw = localStorage.getItem(KEY); return raw? JSON.parse(raw): defaultData(); }
-    catch{ return defaultData(); }
-  }
-  function save(){ localStorage.setItem(KEY, JSON.stringify(data)); }
+    /************** 2) PASTE YOUR FIREBASE CONFIG HERE **************/
+    // Replace the placeholder values below with the values from:
+    // Firebase Console → Project Settings → Your apps → Web
+    const firebaseConfig = {
+      apiKey: "PASTE_API_KEY",
+      authDomain: "PASTE_AUTH_DOMAIN",
+      databaseURL: "PASTE_DATABASE_URL",
+      projectId: "PASTE_PROJECT_ID",
+      storageBucket: "PASTE_STORAGE_BUCKET",
+      messagingSenderId: "PASTE_SENDER_ID",
+      appId: "PASTE_APP_ID"
+    };
 
-  function uid(){ return Math.random().toString(36).slice(2,10); }
-  function todayName(){ return DAY_NAMES[(new Date().getDay()+6)%7]; } // map Sun->Sunday at end
+    /************** 3) INITIALIZE **************/
+    const app = initializeApp(firebaseConfig);
+    const db  = getDatabase(app);
 
-  let data = load();
-  let role = 'Parent';
-  let selectedChild = data.children[0];
-  let selectedDay = todayName();
+    /************** 4) APP STATE **************/
+    const DAY_NAMES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+    let role = 'Parent';
+    let children = ['Child 1','Child 2','Child 3'];     // will be loaded from DB if present
+    let selectedChild = children[0];
+    let selectedDay   = DAY_NAMES[(new Date().getDay()+6)%7]; // today
 
-  // ==== DOM Helpers ====
-  const $ = (sel, root=document) => root.querySelector(sel);
-  const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
-  function el(tag, attrs={}, ...children){
-    const e = document.createElement(tag);
-    Object.entries(attrs).forEach(([k,v])=>{
-      if(k==='class') e.className = v; else if(k==='html') e.innerHTML=v; else if(k.startsWith('on')) e.addEventListener(k.slice(2), v); else e.setAttribute(k,v);
-    });
-    children.forEach(c=>{ if(c==null) return; if(typeof c==='string') e.appendChild(document.createTextNode(c)); else e.appendChild(c); });
-    return e;
-  }
+    /************** 5) DB REFS + HELPERS **************/
+    const childrenRef = ref(db, "children");
+    const tasksRef    = (child, day) => ref(db, `tasks/${encodeURIComponent(child)}/${day}`);
+    const taskRef     = (child, day, id) => ref(db, `tasks/${encodeURIComponent(child)}/${day}/${id}`);
 
-  // ==== UI: Role Tabs ====
-  function renderRoleTabs(){
-    const tabs = $('#roleTabs');
-    tabs.innerHTML='';
-    const roles = ['Parent', ...data.children];
-    roles.forEach(r => {
-      const b = el('button', {class: 'tab'+(role===r?' active':'') , onclick: () => { role=r; render(); }}, r);
-      tabs.appendChild(b);
-    });
-  }
+    const $  = (sel, root=document) => root.querySelector(sel);
+    const el = (tag, attrs={}, ...kids) => {
+      const e = document.createElement(tag);
+      Object.entries(attrs).forEach(([k,v])=>{
+        if(k==='class') e.className=v; else if(k==='html') e.innerHTML=v; else if(k.startsWith('on')) e.addEventListener(k.slice(2), v); else e.setAttribute(k,v);
+      });
+      kids.forEach(k => { if(k==null) return; e.appendChild(typeof k==='string' ? document.createTextNode(k) : k); });
+      return e;
+    };
+    const toMinutes = (t) => {
+      const m = (t||'').match(/(\d{1,2}):(\d{2})(?:\s*(AM|PM))?/i);
+      if(!m) return 0;
+      let h = parseInt(m[1],10), min = parseInt(m[2],10), ap = (m[3]||'').toUpperCase();
+      if(ap==='PM' && h<12) h+=12; if(ap==='AM' && h===12) h=0; return h*60+min;
+    };
 
-  // ==== UI: Parent View ====
-  function renderParent(){
-    const wrap = el('div', {class:'card p-24 mb-24'});
-
-    // Child and Day selectors
-    const childTabs = el('div', {class:'tabs mb-16'});
-    data.children.forEach(c => {
-      childTabs.appendChild(el('button', {class:'tab'+(selectedChild===c?' active':''), onclick:()=>{selectedChild=c; render();}}, c));
-    });
-
-    const dayTabs = el('div', {class:'tabs mb-16'});
-    DAY_NAMES.forEach(d => {
-      dayTabs.appendChild(el('button', {class:'tab'+(selectedDay===d?' active':''), onclick:()=>{selectedDay=d; render();}}, d));
-    });
-
-    wrap.appendChild(el('h2',{},'Manage tasks'));
-    wrap.appendChild(childTabs);
-    wrap.appendChild(dayTabs);
-
-    // Add task form
-    const timeInput = el('input', {class:'input', placeholder:'Time (optional, e.g. 07:30)'});
-    const titleInput = el('input', {class:'input', placeholder:'Task title (e.g. Homework)'});
-    const addBtn = el('button',{class:'btn', onclick: ()=>{
-      const title = titleInput.value.trim();
-      const time = timeInput.value.trim();
-      if(!title) { alert('Please enter a task title'); return; }
-      data.tasks[selectedChild][selectedDay].push({id: uid(), title, time, done:false});
-      titleInput.value=''; timeInput.value='';
-      save(); render();
-    }}, 'Add task');
-
-    wrap.appendChild(el('div',{class:'grid grid-3 mb-16'},
-      el('div',{}, timeInput),
-      el('div',{}, titleInput),
-      el('div',{}, addBtn)
-    ));
-
-    // Task list
-    const list = el('div', {class:'grid'});
-    const items = data.tasks[selectedChild][selectedDay];
-    if(items.length===0) list.appendChild(el('div',{class:'muted'},'No tasks yet.'));
-    items.sort((a,b)=> (a.time||'').localeCompare(b.time||''));
-    items.forEach(item => {
-      const row = el('div', {class:'task'+(item.done?' done':'')});
-      const chk = el('input',{type:'checkbox', checked:item.done?true:false, onchange:()=>{item.done = chk.checked; save(); renderProgress(); row.classList.toggle('done', item.done);} });
-      const time = el('div',{class:'time nowrap'}, item.time||'');
-      const title = el('div',{class:'title', contenteditable:'true', onblur:()=>{ item.title = title.textContent.trim()||item.title; save(); }}, item.title);
-      const del = el('button',{class:'btn danger', onclick:()=>{ if(confirm('Delete this task?')){ data.tasks[selectedChild][selectedDay] = items.filter(x=>x.id!==item.id); save(); render(); } }}, 'Delete');
-      row.append(chk, time, title, el('div',{class:'actions'}, del));
-      list.appendChild(row);
-    });
-
-    wrap.appendChild(list);
-
-    // Footer actions: Export/Import/Reset
-    const controls = el('div',{class:'row between mt-16'},
-      el('div',{},
-        el('button',{class:'btn alt', onclick:exportData},'Export JSON'),
-        el('span',{class:'spacer'},' '),
-        (function(){
-          const file = el('input',{type:'file',accept:'application/json',style:'display:none'});
-          const btn = el('button',{class:'btn alt', onclick:()=>file.click()},'Import JSON');
-          file.addEventListener('change', async ()=>{
-            const f = file.files[0]; if(!f) return; const txt = await f.text();
-            try{ const obj = JSON.parse(txt); if(!obj.children || !obj.tasks) throw new Error('Invalid file'); data = obj; save(); selectedChild = data.children[0]||'Child 1'; render(); }
-            catch(e){ alert('Import failed: '+e.message); }
-          });
-          return el('span',{}, btn, file);
-        })()
-      ),
-      el('div',{}, el('button',{class:'btn danger', onclick:()=>{ if(confirm('Reset ALL data?')){ data = defaultData(); save(); render(); } }},'Reset all'))
-    );
-    wrap.appendChild(el('div',{class:'mt-16'},controls));
-
-    return wrap;
-  }
-
-  // ==== UI: Child View ====
-  function renderChild(name){
-    const wrap = el('div',{class:'card p-24 mb-24'});
-
-    const header = el('div',{class:'row between mb-16'},
-      el('h2',{}, `${name}'s tasks`),
-      el('span',{class:'pill'}, selectedDay)
-    );
-    wrap.appendChild(header);
-
-    const dayTabs = el('div',{class:'tabs mb-16'});
-    DAY_NAMES.forEach(d=>{
-      dayTabs.appendChild(el('button',{class:'tab'+(selectedDay===d?' active':''), onclick:()=>{selectedDay=d; render();}}, d));
-    });
-    wrap.appendChild(dayTabs);
-
-    const list = el('div',{class:'grid'});
-    const items = data.tasks[name][selectedDay];
-    if(items.length===0) list.appendChild(el('div',{class:'muted'},'No tasks yet.'));
-    items.sort((a,b)=> (a.time||'').localeCompare(b.time||''));
-    items.forEach(item=>{
-      const row = el('div',{class:'task'+(item.done?' done':'')});
-      const chk = el('input',{type:'checkbox',checked:item.done?true:false, onchange:()=>{ item.done = chk.checked; save(); row.classList.toggle('done', item.done); renderProgress(); }});
-      const time = el('div',{class:'time nowrap'}, item.time||'');
-      const title = el('div',{class:'title'}, item.title);
-      row.append(chk,time,title);
-      list.appendChild(row);
-    });
-
-    wrap.appendChild(list);
-    return wrap;
-  }
-
-  // ==== Progress widget (for Parent top) ====
-  function renderProgress(){
-    const node = $('#progress'); if(!node) return;
-    node.innerHTML='';
-    const grid = el('div',{class:'grid grid-3'});
-    data.children.forEach(ch=>{
-      let total=0, done=0; DAY_NAMES.forEach(d=>{ const arr=data.tasks[ch][d]; total+=arr.length; done+=arr.filter(x=>x.done).length; });
-      const pct = total? Math.round(done*100/total): 0;
-      const card = el('div',{class:'card p-16'},
-        el('h3',{}, ch),
-        el('div',{class:'muted', style:'margin:6px 0'}, `${done} of ${total} done`),
-        el('div',{class:'bar'}, el('span',{style:`width:${pct}%;`})),
-        el('div',{class:'muted', style:'margin-top:6px'}, `${pct}%`)
-      );
-      grid.appendChild(card);
-    });
-    node.appendChild(grid);
-  }
-
-  // ==== Render Root ====
-  function render(){
-    renderRoleTabs();
-    const content = $('#content');
-    content.innerHTML='';
-
-    // Parent header with progress
-    if(role==='Parent'){
-      const progWrap = el('div',{class:'card p-24 mb-24'}, el('h2',{},'Overall progress'), el('div',{id:'progress'}));
-      content.appendChild(progWrap);
-      content.appendChild(renderParent());
-      renderProgress();
-    } else {
-      if(!data.children.includes(role)) { role='Parent'; render(); return; }
-      selectedChild = role; // sync
-      content.appendChild(renderChild(role));
+    /************** 6) DATA FUNCTIONS (CRUD) **************/
+    async function ensureChildrenList(){
+      const snap = await get(childrenRef);
+      if (snap.exists()) children = snap.val();
+      else await set(childrenRef, children);
+      selectedChild = children[0] || 'Child 1';
     }
-  }
 
-  function exportData(){
-    const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'family-tasks.json'; a.click();
-    URL.revokeObjectURL(url);
-   }
+    async function addTask(child, day, title, time=""){
+      const newRef = push(tasksRef(child, day));
+      await set(newRef, { id:newRef.key, title, time, done:false });
+    }
 
-  // Initial render
-  render();
-})();
-</script>
+    async function getTasks(child, day){
+      const snap = await get(tasksRef(child, day));
+      const obj  = snap.val() || {};
+      return Object.values(obj).sort((a,b)=> toMinutes(a.time)-toMinutes(b.time));
+    }
+
+    async function updateTask(child, day, id, patch){
+      await update(taskRef(child, day, id), patch);
+    }
+
+    async function deleteTask(child, day, id){
+      await remove(taskRef(child, day, id));
+    }
+
+    function subscribeAllTasks(onChange){
+      onValue(ref(db, "tasks"), (snap) => onChange(snap.val() || {}));
+    }
+
+    /************** 7) UI RENDERING **************/
+    function renderRoleTabs(){
+      const tabs = $('#roleTabs'); tabs.innerHTML='';
+      ['Parent', ...children].forEach(r=>{
+        tabs.appendChild(el('button',
+          { class:'tab'+(role===r?' active':''), onclick:()=>{ role=r; render(); } },
+          r
+        ));
+      });
+    }
+
+    function renderParent(){
+      const page = el('div');
+
+      // Progress (live)
+      const prog = el('div',{class:'card p-24 mb-24'}, el('h2',{},'Overall progress'), el('div',{id:'progress'}));
+      page.appendChild(prog);
+
+      // Select child / day
+      const wrap = el('div',{class:'card p-24 mb-24'});
+      const childTabs = el('div',{class:'tabs mb-16'});
+      children.forEach(c=> childTabs.appendChild(el('button',
+        { class:'tab'+(selectedChild===c?' active':''), onclick:()=>{selectedChild=c; render();} }, c)));
+      const dayTabs = el('div',{class:'tabs mb-16'});
+      DAY_NAMES.forEach(d=> dayTabs.appendChild(el('button',
+        { class:'tab'+(selectedDay===d?' active':''), onclick:()=>{selectedDay=d; render();} }, d)));
+      wrap.append(el('h2',{},'Manage tasks'), childTabs, dayTabs);
+
+      // Add task form
+      const timeIn  = el('input',{class:'input',placeholder:'Time (optional, e.g. 07:30)'});
+      const titleIn = el('input',{class:'input',placeholder:'Task title'});
+      const addBtn  = el('button',{class:'btn', onclick:async ()=>{
+        const t = titleIn.value.trim(); const ti = timeIn.value.trim();
+        if(!t){ alert('Please enter a task title'); return; }
+        await addTask(selectedChild, selectedDay, t, ti);
+        titleIn.value=''; timeIn.value=''; await render();
+      }}, 'Add task');
+      wrap.append(el('div',{class:'grid grid-3 mb-16'}, el('div',{},timeIn), el('div',{},titleIn), el('div',{},addBtn)));
+
+      // Task list
+      const list = el('div'); wrap.append(list);
+      getTasks(selectedChild, selectedDay).then(items=>{
+        if(items.length===0) list.appendChild(el('div',{class:'muted'},'No tasks yet.'));
+        items.forEach(item=>{
+          const row   = el('div',{class:'task'+(item.done?' done':'')});
+          const chk   = el('input',{type:'checkbox',checked:item.done?true:false, onchange:async()=>{
+            await updateTask(selectedChild, selectedDay, item.id, {done: chk.checked});
+            row.classList.toggle('done', chk.checked);
+          }});
+          const time  = el('div',{class:'time'}, item.time||'');
+          const title = el('div',{class:'title',contenteditable:'true', onblur:async()=>{
+            const newTitle = title.textContent.trim() || item.title;
+            if(newTitle !== item.title) await updateTask(selectedChild, selectedDay, item.id, {title:newTitle});
+          }}, item.title);
+          const del   = el('button',{class:'btn danger', onclick:async()=>{
+            if(confirm('Delete this task?')){ await deleteTask(selectedChild, selectedDay, item.id); await render(); }
+          }}, 'Delete');
+          row.append(chk, time, title, el('div',{style:'margin-left:auto'}, del));
+          list.appendChild(row);
+        });
+      });
+
+      page.appendChild(wrap);
+
+      // Live progress subscription
+      subscribeAllTasks((all)=>{
+        const node = $('#progress'); if(!node) return;
+        node.innerHTML='';
+        const grid = el('div',{class:'grid grid-2'});
+        children.forEach(ch=>{
+          let total=0, done=0;
+          DAY_NAMES.forEach(d=>{
+            const bucket = (((all||{})[encodeURIComponent(ch)]||{})[d]) || {};
+            const arr = Object.values(bucket);
+            total += arr.length; done += arr.filter(x=>x.done).length;
+          });
+          const pct = total? Math.round(done*100/total): 0;
+          grid.appendChild(el('div',{class:'card p-16'},
+            el('h3',{}, ch),
+            el('div',{class:'muted',style:'margin:6px 0'}, `${done} of ${total} done`),
+            el('div',{class:'bar'}, el('span',{style:`width:${pct}%;`})),
+            el('div',{class:'muted',style:'margin-top:6px'}, `${pct}%`)
+          ));
+        });
+        node.appendChild(grid);
+      });
+
+      return page;
+    }
+
+    function renderChild(name){
+      const wrap = el('div',{class:'card p-24 mb-24'});
+      wrap.append(el('div',{class:'row between mb-16'}, el('h2',{}, `${name}'s tasks`), el('span',{class:'muted'}, selectedDay)));
+
+      const dayTabs = el('div',{class:'tabs mb-16'});
+      DAY_NAMES.forEach(d=> dayTabs.appendChild(el('button',
+        { class:'tab'+(selectedDay===d?' active':''), onclick:()=>{selectedDay=d; render();} }, d)));
+      wrap.append(dayTabs);
+
+      const list = el('div'); wrap.append(list);
+      getTasks(name, selectedDay).then(items=>{
+        if(items.length===0) list.appendChild(el('div',{class:'muted'},'No tasks yet.'));
+        items.forEach(item=>{
+          const row = el('div',{class:'task'+(item.done?' done':'')});
+          const chk = el('input',{type:'checkbox',checked:item.done?true:false, onchange:async()=>{
+            await updateTask(name, selectedDay, item.id, {done: chk.checked});
+            row.classList.toggle('done', chk.checked);
+          }});
+          row.append(chk, el('div',{class:'time'}, item.time||''), el('div',{class:'title'}, item.title));
+          list.appendChild(row);
+        });
+      });
+
+      return wrap;
+    }
+
+    async function render(){
+      await ensureChildrenList();
+      renderRoleTabs();
+      const content = $('#content'); content.innerHTML='';
+      if(role==='Parent'){ content.appendChild(renderParent()); }
+      else { selectedChild = role; content.appendChild(renderChild(role)); }
+    }
+
+    // Initial render
+    render();
+  </script>
 </body>
+</html>
+``
