@@ -3,210 +3,278 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Family Duty Calendar</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-  <!-- Tailwind (Play CDN) -->
-  https://cdn.tailwindcss.com</script>
-
-  <!-- React + ReactDOM (development UMD) + Babel Standalone -->
-  https://unpkg.com/react@18/umd/react.development.js</script>
-  https://unpkg.com/react-dom@18/umd/react-dom.development.js</script>
-  https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js</script>
-
+  <title>Family Tasks</title>
   <style>
-    body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    :root{
+      --bg: #f6f8fc; --fg:#0f172a; --muted:#475569; --brand:#4f46e5; --brand-2:#6366f1;
+      --card:#ffffff; --border:#e2e8f0; --success:#10b981; --danger:#ef4444; --warn:#f59e0b;
+    }
+    html,body{height:100%}
+    body{margin:0;background:linear-gradient(135deg,#eef2ff,#f8fafc);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--fg)}
+    .container{max-width:1000px;margin:24px auto;padding:0 16px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 1px 3px rgba(16,24,40,.06)}
+    .p-16{padding:16px}.p-24{padding:24px}.mb-16{margin-bottom:16px}.mb-24{margin-bottom:24px}
+    h1{margin:0 0 8px;font-size:28px;color:#1e293b}
+    h2{margin:0 0 12px;font-size:20px;color:#1f2937}
+    h3{margin:0 0 8px;font-size:16px;color:#1f2937}
+    .row{display:flex;gap:12px;align-items:center}
+    .between{justify-content:space-between}.center{align-items:center}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap}
+    .tab{border:1px solid var(--border);background:#f1f5f9;color:#0f172a;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:600}
+    .tab.active{background:var(--brand);color:#fff;border-color:transparent}
+    .muted{color:var(--muted)}
+    .btn{display:inline-flex;align-items:center;gap:8px;background:var(--brand);color:#fff;border:none;border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:600}
+    .btn.alt{background:#e2e8f0;color:#0f172a}
+    .btn.danger{background:var(--danger)}
+    .btn.success{background:var(--success)}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .grid{display:grid;gap:12px}
+    .grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    @media (max-width:720px){.grid-3,.grid-4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media (max-width:540px){.grid-2,.grid-3,.grid-4{grid-template-columns:repeat(1,minmax(0,1fr))}}
+    .input, select{border:1px solid var(--border);padding:10px 12px;border-radius:10px;font:inherit;width:100%;background:#fff}
+    .task{display:flex;gap:12px;align-items:center;border:1px solid var(--border);border-radius:10px;background:#f8fafc;padding:10px}
+    .time{min-width:84px;color:#4338ca;font-weight:700}
+    .task.done .title{text-decoration:line-through;color:#64748b}
+    .task .actions{margin-left:auto;display:flex;gap:6px}
+    .pill{display:inline-block;background:#e2e8f0;color:#0f172a;border-radius:999px;padding:2px 10px;font-size:12px}
+    .bar{height:8px;background:#e2e8f0;border-radius:999px;overflow:hidden}
+    .bar>span{display:block;height:100%;background:var(--brand);}
+    .help{background:#eff6ff;border-left:4px solid #60a5fa;padding:12px;border-radius:8px}
+    .spacer{height:4px}
+    .danger-text{color:var(--danger)}
+    .nowrap{white-space:nowrap}
   </style>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-  <div id="root"></div>
+<body>
+  <div class="container">
+    <div class="card p-24 mb-24">
+      <h1>Family Tasks</h1>
+      <div class="muted">Select who is viewing, manage tasks (Parent), or mark them done (Children).</div>
+    </div>
 
-  <!-- IMPORTANT: Babel needs presets for JSX/ESNext or you'll get a white page -->
-  <!-- data-presets="env,react" is the critical piece here.  [1](https://www.w3schools.com/css/css_grid.asp) -->
-  <script type="text/babel" data-presets="env,react">
-    const { useState, useEffect } = React;
+    <div class="card p-16 mb-24">
+      <div class="tabs" id="roleTabs"></div>
+    </div>
 
-    function App() {
-      const children = ['Moamen', 'Girls'];
-      const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+    <div id="content"></div>
 
-      const [selectedChild, setSelectedChild] = useState(children[0]);
-      const [selectedDay, setSelectedDay] = useState('Monday');
-      const [data, setData] = useState(null);   // contents of schedule.json
-      const [error, setError] = useState(null);
-      const [showStats, setShowStats] = useState(false);
+    <div class="card p-16 mb-24 help">
+      <strong>Tip:</strong> All data is saved in your browser. Use Export/Import (Parent view) to back up or move data.
+    </div>
+  </div>
 
-      useEffect(() => {
-        fetch('schedule.json')
-          .then(r => r.ok ? r.json() : Promise.reject(new Error('Failed to load schedule.json')))
-          .then(j => setData(j))
-          .catch(e => setError(e));
-      }, []);
+<script>
+(function(){
+  const DAY_NAMES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  const DEFAULT_CHILDREN = ['Child 1','Child 2','Child 3'];
+  const KEY = 'family-tasks-v1';
 
-      // Helpers
-      function getTasks(day, child) {
-        if (!data) return [];
-        const entries = (data[child]?.[day] || []);
-        // sort by time if possible
-        const toMinutes = (t) => {
-          const m = (t || '').match(/(\d{1,2}):(\d{2})(?:\s*(AM|PM))?/i);
-          if (!m) return 0;
-          let h = parseInt(m[1],10), min = parseInt(m[2],10), ap = m[3];
-          if (ap) { if (ap.toUpperCase()==='PM' && h < 12) h += 12; if (ap.toUpperCase()==='AM' && h===12) h = 0; }
-          return h*60 + min;
-        };
-        return [...entries].sort((a,b) => toMinutes(a.time) - toMinutes(b.time));
-      }
+  // ==== State & Storage ====
+  function defaultData(){
+    const daysObj = () => DAY_NAMES.reduce((a,d)=> (a[d]=[], a), {});
+    const obj = { children:[...DEFAULT_CHILDREN], tasks:{} };
+    obj.children.forEach(c => { obj.tasks[c] = daysObj(); });
+    return obj;
+  }
+  function load(){
+    try{ const raw = localStorage.getItem(KEY); return raw? JSON.parse(raw): defaultData(); }
+    catch{ return defaultData(); }
+  }
+  function save(){ localStorage.setItem(KEY, JSON.stringify(data)); }
 
-      function getStats(child) {
-        if (!data) return { completed:0, total:0, percentage:0 };
-        let total = 0, completed = 0;
-        days.forEach(d => {
-          const ts = data[child]?.[d] || [];
-          total += ts.length;
-          completed += ts.filter(x => x.task && x.task.toLowerCase() !== 'free').length;
-        });
-        const pct = total > 0 ? Math.round((completed/total)*100) : 0;
-        return { completed, total, percentage: pct };
-      }
+  function uid(){ return Math.random().toString(36).slice(2,10); }
+  function todayName(){ return DAY_NAMES[(new Date().getDay()+6)%7]; } // map Sun->Sunday at end
 
-      if (error) {
-        return <div className="max-w-3xl mx-auto bg-white p-4 rounded-lg shadow">Error: {String(error)}</div>;
-      }
-      if (!data) {
-        return <div className="max-w-3xl mx-auto bg-white p-4 rounded-lg shadow">Loading schedule…</div>;
-      }
+  let data = load();
+  let role = 'Parent';
+  let selectedChild = data.children[0];
+  let selectedDay = todayName();
 
-      return (
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-            <h1 className="text-3xl font-bold text-indigo-900 mb-2 flex items-center gap-2">
-              <span className="text-2xl">📅</span> Family Duty Calendar
-            </h1>
-            <p className="text-gray-600">Built from your Excel data (Moamen & Girls)</p>
-          </div>
+  // ==== DOM Helpers ====
+  const $ = (sel, root=document) => root.querySelector(sel);
+  const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+  function el(tag, attrs={}, ...children){
+    const e = document.createElement(tag);
+    Object.entries(attrs).forEach(([k,v])=>{
+      if(k==='class') e.className = v; else if(k==='html') e.innerHTML=v; else if(k.startsWith('on')) e.addEventListener(k.slice(2), v); else e.setAttribute(k,v);
+    });
+    children.forEach(c=>{ if(c==null) return; if(typeof c==='string') e.appendChild(document.createTextNode(c)); else e.appendChild(c); });
+    return e;
+  }
 
-          {/* Who's viewing */}
-          <div className="bg-white rounded-lg shadow-lg p-4 mb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-indigo-600">👤</span>
-              <span className="font-semibold text-gray-700">Who's viewing?</span>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              {['Parent', ...children].map(label => (
-                <button
-                  key={label}
-                  onClick={() => { setSelectedChild(label==='Parent' ? 'Parent' : label); setShowStats(false); }}
-                  className={`p-3 rounded-lg font-medium transition ${
-                    selectedChild === label
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {label === 'Parent' ? '👨‍👩‍👧‍👦 Parent' : label}
-                </button>
-              ))}
-            </div>
-          </div>
+  // ==== UI: Role Tabs ====
+  function renderRoleTabs(){
+    const tabs = $('#roleTabs');
+    tabs.innerHTML='';
+    const roles = ['Parent', ...data.children];
+    roles.forEach(r => {
+      const b = el('button', {class: 'tab'+(role===r?' active':'') , onclick: () => { role=r; render(); }}, r);
+      tabs.appendChild(b);
+    });
+  }
 
-          {/* Parent stats */}
-          {selectedChild === 'Parent' && (
-            <>
-              <div className="bg-white rounded-lg shadow-lg p-4 mb-6 flex gap-3">
-                <button
-                  onClick={() => setShowStats(!showStats)}
-                  className="flex-1 bg-green-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-green-700 transition"
-                >
-                  {showStats ? 'Hide Statistics' : 'View Statistics'}
-                </button>
-              </div>
+  // ==== UI: Parent View ====
+  function renderParent(){
+    const wrap = el('div', {class:'card p-24 mb-24'});
 
-              {showStats && (
-                <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-                  <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                    <span>🏆</span> Weekly Progress
-                  </h2>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    {children.map(ch => {
-                      const s = getStats(ch);
-                      return (
-                        <div key={ch} className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-lg p-4 border-2 border-indigo-200">
-                          <h3 className="font-bold text-lg text-indigo-900 mb-2">{ch}</h3>
-                          <div className="text-3xl font-bold text-indigo-600 mb-2">{s.percentage}%</div>
-                          <div className="text-sm text-gray-600">{s.completed} of {s.total} planned slots</div>
-                          <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
-                            <div className="bg-indigo-600 h-2 rounded-full transition-all duration-300" style={{ width: `${s.percentage}%` }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
+    // Child and Day selectors
+    const childTabs = el('div', {class:'tabs mb-16'});
+    data.children.forEach(c => {
+      childTabs.appendChild(el('button', {class:'tab'+(selectedChild===c?' active':''), onclick:()=>{selectedChild=c; render();}}, c));
+    });
 
-          {/* Day selection */}
-          <div className="bg-white rounded-lg shadow-lg p-4 mb-6">
-            <div className="flex overflow-x-auto gap-2 pb-2">
-              {days.map(day => (
-                <button
-                  key={day}
-                  onClick={() => setSelectedDay(day)}
-                  className={`flex-shrink-0 px-4 py-3 rounded-lg font-medium transition ${
-                    selectedDay === day
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {day}
-                </button>
-              ))}
-            </div>
-          </div>
+    const dayTabs = el('div', {class:'tabs mb-16'});
+    DAY_NAMES.forEach(d => {
+      dayTabs.appendChild(el('button', {class:'tab'+(selectedDay===d?' active':''), onclick:()=>{selectedDay=d; render();}}, d));
+    });
 
-          {/* Tasks */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <span>⏰</span>
-              {selectedDay} — {selectedChild === 'Parent' ? 'All Tasks' : `${selectedChild}'s Tasks`}
-            </h2>
+    wrap.appendChild(el('h2',{},'Manage tasks'));
+    wrap.appendChild(childTabs);
+    wrap.appendChild(dayTabs);
 
-            <div className="space-y-3">
-              {selectedChild === 'Parent'
-                ? children.map(ch => (
-                    <div key={ch} className="border-l-4 border-indigo-400 pl-4 mb-4">
-                      <h3 className="font-bold text-lg text-indigo-900 mb-2">{ch}</h3>
-                      {getTasks(selectedDay, ch).map((item, i) => (
-                        <div key={i} className="flex items-center gap-3 p-3 rounded-lg mb-2 bg-gray-50 border-2 border-gray-200">
-                          <div className="flex-shrink-0 w-20 text-sm font-medium text-indigo-600">{item.time}</div>
-                          <div className="flex-1 text-gray-800">{item.task}</div>
-                        </div>
-                      ))}
-                    </div>
-                  ))
-                : getTasks(selectedDay, selectedChild).map((item, i) => (
-                    <div key={i} className="flex items-center gap-3 p-4 rounded-lg bg-gray-50 border-2 border-gray-300">
-                      <div className="flex-shrink-0 w-20 text-sm font-bold text-indigo-600">{item.time}</div>
-                      <div className="flex-1 font-medium text-gray-800">{item.task}</div>
-                    </div>
-                  ))}
-            </div>
-          </div>
+    // Add task form
+    const timeInput = el('input', {class:'input', placeholder:'Time (optional, e.g. 07:30)'});
+    const titleInput = el('input', {class:'input', placeholder:'Task title (e.g. Homework)'});
+    const addBtn = el('button',{class:'btn', onclick: ()=>{
+      const title = titleInput.value.trim();
+      const time = timeInput.value.trim();
+      if(!title) { alert('Please enter a task title'); return; }
+      data.tasks[selectedChild][selectedDay].push({id: uid(), title, time, done:false});
+      titleInput.value=''; timeInput.value='';
+      save(); render();
+    }}, 'Add task');
 
-          <div className="mt-6 bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
-            <div className="flex items-start gap-2">
-              <span className="flex-shrink-0 mt-0.5">ℹ️</span>
-              <div className="text-sm text-blue-800">
-                <strong>Tip:</strong> To update the data, replace <code>schedule.json</code> with a new export.
-              </div>
-            </div>
-          </div>
-        </div>
+    wrap.appendChild(el('div',{class:'grid grid-3 mb-16'},
+      el('div',{}, timeInput),
+      el('div',{}, titleInput),
+      el('div',{}, addBtn)
+    ));
+
+    // Task list
+    const list = el('div', {class:'grid'});
+    const items = data.tasks[selectedChild][selectedDay];
+    if(items.length===0) list.appendChild(el('div',{class:'muted'},'No tasks yet.'));
+    items.sort((a,b)=> (a.time||'').localeCompare(b.time||''));
+    items.forEach(item => {
+      const row = el('div', {class:'task'+(item.done?' done':'')});
+      const chk = el('input',{type:'checkbox', checked:item.done?true:false, onchange:()=>{item.done = chk.checked; save(); renderProgress(); row.classList.toggle('done', item.done);} });
+      const time = el('div',{class:'time nowrap'}, item.time||'');
+      const title = el('div',{class:'title', contenteditable:'true', onblur:()=>{ item.title = title.textContent.trim()||item.title; save(); }}, item.title);
+      const del = el('button',{class:'btn danger', onclick:()=>{ if(confirm('Delete this task?')){ data.tasks[selectedChild][selectedDay] = items.filter(x=>x.id!==item.id); save(); render(); } }}, 'Delete');
+      row.append(chk, time, title, el('div',{class:'actions'}, del));
+      list.appendChild(row);
+    });
+
+    wrap.appendChild(list);
+
+    // Footer actions: Export/Import/Reset
+    const controls = el('div',{class:'row between mt-16'},
+      el('div',{},
+        el('button',{class:'btn alt', onclick:exportData},'Export JSON'),
+        el('span',{class:'spacer'},' '),
+        (function(){
+          const file = el('input',{type:'file',accept:'application/json',style:'display:none'});
+          const btn = el('button',{class:'btn alt', onclick:()=>file.click()},'Import JSON');
+          file.addEventListener('change', async ()=>{
+            const f = file.files[0]; if(!f) return; const txt = await f.text();
+            try{ const obj = JSON.parse(txt); if(!obj.children || !obj.tasks) throw new Error('Invalid file'); data = obj; save(); selectedChild = data.children[0]||'Child 1'; render(); }
+            catch(e){ alert('Import failed: '+e.message); }
+          });
+          return el('span',{}, btn, file);
+        })()
+      ),
+      el('div',{}, el('button',{class:'btn danger', onclick:()=>{ if(confirm('Reset ALL data?')){ data = defaultData(); save(); render(); } }},'Reset all'))
+    );
+    wrap.appendChild(el('div',{class:'mt-16'},controls));
+
+    return wrap;
+  }
+
+  // ==== UI: Child View ====
+  function renderChild(name){
+    const wrap = el('div',{class:'card p-24 mb-24'});
+
+    const header = el('div',{class:'row between mb-16'},
+      el('h2',{}, `${name}'s tasks`),
+      el('span',{class:'pill'}, selectedDay)
+    );
+    wrap.appendChild(header);
+
+    const dayTabs = el('div',{class:'tabs mb-16'});
+    DAY_NAMES.forEach(d=>{
+      dayTabs.appendChild(el('button',{class:'tab'+(selectedDay===d?' active':''), onclick:()=>{selectedDay=d; render();}}, d));
+    });
+    wrap.appendChild(dayTabs);
+
+    const list = el('div',{class:'grid'});
+    const items = data.tasks[name][selectedDay];
+    if(items.length===0) list.appendChild(el('div',{class:'muted'},'No tasks yet.'));
+    items.sort((a,b)=> (a.time||'').localeCompare(b.time||''));
+    items.forEach(item=>{
+      const row = el('div',{class:'task'+(item.done?' done':'')});
+      const chk = el('input',{type:'checkbox',checked:item.done?true:false, onchange:()=>{ item.done = chk.checked; save(); row.classList.toggle('done', item.done); renderProgress(); }});
+      const time = el('div',{class:'time nowrap'}, item.time||'');
+      const title = el('div',{class:'title'}, item.title);
+      row.append(chk,time,title);
+      list.appendChild(row);
+    });
+
+    wrap.appendChild(list);
+    return wrap;
+  }
+
+  // ==== Progress widget (for Parent top) ====
+  function renderProgress(){
+    const node = $('#progress'); if(!node) return;
+    node.innerHTML='';
+    const grid = el('div',{class:'grid grid-3'});
+    data.children.forEach(ch=>{
+      let total=0, done=0; DAY_NAMES.forEach(d=>{ const arr=data.tasks[ch][d]; total+=arr.length; done+=arr.filter(x=>x.done).length; });
+      const pct = total? Math.round(done*100/total): 0;
+      const card = el('div',{class:'card p-16'},
+        el('h3',{}, ch),
+        el('div',{class:'muted', style:'margin:6px 0'}, `${done} of ${total} done`),
+        el('div',{class:'bar'}, el('span',{style:`width:${pct}%;`})),
+        el('div',{class:'muted', style:'margin-top:6px'}, `${pct}%`)
       );
-    }
+      grid.appendChild(card);
+    });
+    node.appendChild(grid);
+  }
 
-       ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-  </script>
+  // ==== Render Root ====
+  function render(){
+    renderRoleTabs();
+    const content = $('#content');
+    content.innerHTML='';
+
+    // Parent header with progress
+    if(role==='Parent'){
+      const progWrap = el('div',{class:'card p-24 mb-24'}, el('h2',{},'Overall progress'), el('div',{id:'progress'}));
+      content.appendChild(progWrap);
+      content.appendChild(renderParent());
+      renderProgress();
+    } else {
+      if(!data.children.includes(role)) { role='Parent'; render(); return; }
+      selectedChild = role; // sync
+      content.appendChild(renderChild(role));
+    }
+  }
+
+  function exportData(){
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'family-tasks.json'; a.click();
+    URL.revokeObjectURL(url);
+   }
+
+  // Initial render
+  render();
+})();
+</script>
 </body>
