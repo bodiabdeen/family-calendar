@@ -1,0 +1,417 @@
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Family Duty Calendar</title>
+
+    <!-- Font: Inter (clean, readable web typography) -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+      rel="stylesheet"
+   ript src="https://cdn.tailwindcss.com <script>
+      // Optional: small Tailwind theme tweak
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: { sans: ['Inter', 'system-ui', 'ui-sans-serif', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'] },
+          },
+        },
+      };
+    </script>
+
+    <style>
+      /* Base page styles */
+      html, body {
+        height: 100%;
+      }
+      body {
+        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif;
+        background: linear-gradient(135deg, #eff6ff 0%, #e0e7ff 100%);
+      }
+    </style>
+  </head>
+  <body class="min-h-screen p-4">
+    <div id="root"></div>
+
+    <!-- React 18 UMD + Babel Standalone to transpile JSX in the browser -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js <script src="https://unpkg.com/react-dom@18/umd/react-dom.development    <script src="https://unpkg.com/@babel/standalone/babelpt>
+
+    <script type="text/babel">
+      const { useState, useEffect, useMemo } = React;
+
+      // Simple localStorage wrapper so existing code can call window.storage.get/set
+      window.storage = {
+        get: async (key) => {
+          const value = localStorage.getItem(key);
+          return value ? { value } : null;
+        },
+        set: async (key, value) => {
+          localStorage.setItem(key, value);
+          return true;
+        },
+      };
+
+      function FamilyDutyCalendar() {
+        const children = ['Child 1', 'Child 2', 'Child 3'];
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+        // Preselect current weekday if possible
+        const currentWeekday = useMemo(() => {
+          const jsDay = new Date().getDay(); // 0=Sun..6=Sat
+          // Our array starts at Monday index 0
+          const map = { 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday', 6: 'Saturday', 0: 'Sunday' };
+          return map[jsDay] || 'Monday';
+        }, []);
+
+        const [selectedChild, setSelectedChild] = useState('parent');
+        const [selectedDay, setSelectedDay] = useState(currentWeekday);
+        const [tasks, setTasks] = useState({});
+        const [showStats, setShowStats] = useState(false);
+
+        // Base schedule for Monday
+        const monday = [
+          { time: '7:00 AM', task: 'Wake up & make bed', child: 'Child 1' },
+          { time: '7:00 AM', task: 'Wake up & make bed', child: 'Child 2' },
+          { time: '7:00 AM', task: 'Wake up & make bed', child: 'Child 3' },
+          { time: '7:30 AM', task: 'Breakfast & clean dishes', child: 'Child 1' },
+          { time: '7:30 AM', task: 'Get ready for school', child: 'Child 2' },
+          { time: '7:30 AM', task: 'Get ready for school', child: 'Child 3' },
+          { time: '4:00 PM', task: 'Homework time', child: 'Child 1' },
+          { time: '4:00 PM', task: 'Homework time', child: 'Child 2' },
+          { time: '4:00 PM', task: 'Homework time', child: 'Child 3' },
+          { time: '6:00 PM', task: 'Set table for dinner', child: 'Child 1' },
+          { time: '7:00 PM', task: 'Clean room', child: 'Child 2' },
+          { time: '7:30 PM', task: 'Take out trash', child: 'Child 3' },
+          { time: '9:00 PM', task: 'Bedtime routine', child: 'Child 1' },
+          { time: '9:00 PM', task: 'Bedtime routine', child: 'Child 2' },
+          { time: '9:00 PM', task: 'Bedtime routine', child: 'Child 3' },
+        ];
+
+        // Build full week schedule (copy Monday) and attach a stable id per day item
+        const initialSchedule = useMemo(() => {
+          const schedule = {};
+          days.forEach((day) => {
+            schedule[day] = monday.map((item, index) => ({
+              ...item,
+              // Stable key for each DAY item, based on the index within that day's array:
+              // we’ll reuse this index inside filtered views to keep keys aligned.
+              _idx: index,
+            }));
+          });
+          return schedule;
+        }, []);
+
+        // Helpers that always keep the original index from the day
+        const getChildTasksWithIndex = (day, child) => {
+          return (initialSchedule[day] || [])
+            .map((item, idx) => ({ ...item, _idx: item._idx ?? idx }))
+            .filter((item) => item.child === child);
+        };
+
+        // Initialize tasks from storage or create blank state
+        useEffect(() => {
+          (async () => {
+            const result = await window.storage.get('family-tasks');
+            if (result?.value) {
+              try {
+                setTasks(JSON.parse(result.value));
+                return;
+              } catch {
+                /* fall through to reinit */
+              }
+            }
+            // Initialize empty task completion tracking (per day, per item index)
+            const init = {};
+            days.forEach((day) => {
+              init[day] = {};
+              (initialSchedule[day] || []).forEach((item) => {
+                const key = `${item.child}-${item._idx}`;
+                init[day][key] = false;
+              });
+            });
+            setTasks(init);
+            await window.storage.set('family-tasks', JSON.stringify(init));
+          })();
+        }, [initialSchedule]);
+
+        const toggleTask = async (day, child, originalIdx) => {
+          const taskKey = `${child}-${originalIdx}`;
+          const updated = {
+            ...tasks,
+            [day]: {
+              ...(tasks[day] || {}),
+              [taskKey]: !tasks[day]?.[taskKey],
+            },
+          };
+          setTasks(updated);
+          await window.storage.set('family-tasks', JSON.stringify(updated));
+        };
+
+        const getCompletionStats = (child) => {
+          let completed = 0;
+          let total = 0;
+          days.forEach((day) => {
+            const childTasks = getChildTasksWithIndex(day, child);
+            childTasks.forEach((item) => {
+              const taskKey = `${child}-${item._idx}`;
+              total += 1;
+              if (tasks[day]?.[taskKey]) completed += 1;
+            });
+          });
+          const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+          return { completed, total, percentage };
+        };
+
+        const getDayCompletion = (day, child) => {
+          const childTasks = getChildTasksWithIndex(day, child);
+          let completed = 0;
+          childTasks.forEach((item) => {
+            const taskKey = `${child}-${item._idx}`;
+            if (tasks[day]?.[taskKey]) completed += 1;
+          });
+          return { completed, total: childTasks.length };
+        };
+
+        const resetWeek = async () => {
+          if (!confirm('Are you sure you want to reset all tasks for the week?')) return;
+          const reset = {};
+          days.forEach((day) => {
+            reset[day] = {};
+            (initialSchedule[day] || []).forEach((item) => {
+              const key = `${item.child}-${item._idx}`;
+              reset[day][key] = false;
+            });
+          });
+          setTasks(reset);
+          await window.storage.set('family-tasks', JSON.stringify(reset));
+        };
+
+        return (
+          <div className="max-w-4xl mx-auto">
+            {/* Header */}
+            <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+              <h1 className="text-3xl font-bold text-indigo-900 mb-2 flex items-center gap-2">
+                <span className="text-indigo-700 text-3xl">📅</span>
+                Family Duty Calendar
+              </h1>
+              <p className="text-gray-600">Track daily responsibilities and progress</p>
+            </div>
+
+            {/* Who's viewing */}
+            <div className="bg-white rounded-lg shadow-lg p-4 mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-indigo-600 text-xl">👤</span>
+                <span className="font-semibold text-gray-700">Who's viewing?</span>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <button
+                  onClick={() => { setSelectedChild('parent'); setShowStats(false); }}
+                  className={`p-3 rounded-lg font-medium transition ${
+                    selectedChild === 'parent'
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  👨‍👩‍👧‍👦 Parent
+                </button>
+
+                {children.map((child) => (
+                  <button
+                    key={child}
+                    onClick={() => { setSelectedChild(child); setShowStats(false); }}
+                    className={`p-3 rounded-lg font-medium transition ${
+                      selectedChild === child
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {child}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Parent stats */}
+            {selectedChild === 'parent' && showStats && (
+              <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                  <span className="text-yellow-500 text-2xl">🏆</span>
+                  Weekly Progress Report
+                </h2>
+                <div className="grid md:grid-cols-3 gap-4">
+                  {children.map((child) => {
+                    const stats = getCompletionStats(child);
+                    return (
+                      <div
+                        key={child}
+                        className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-lg p-4 border-2 border-indigo-200"
+                      >
+                        <h3 className="font-bold text-lg text-indigo-900 mb-2">{child}</h3>
+                        <div className="text-3xl font-bold text-indigo-600 mb-2">{stats.percentage}%</div>
+                        <div className="text-sm text-gray-600">
+                          {stats.completed} of {stats.total} tasks completed
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
+                          <div
+                            className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${stats.percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Parent controls */}
+            {selectedChild === 'parent' && (
+              <div className="bg-white rounded-lg shadow-lg p-4 mb-6 flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => setShowStats(!showStats)}
+                  className="flex-1 bg-green-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-green-700 transition"
+                >
+                  {showStats ? 'Hide Statistics' : 'View Statistics'}
+                </button>
+                <button
+                  onClick={resetWeek}
+                  className="flex-1 bg-red-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-red-700 transition"
+                >
+                  Reset Week
+                </button>
+              </div>
+            )}
+
+            {/* Day selection */}
+            <div className="bg-white rounded-lg shadow-lg p-4 mb-6">
+              <div className="flex overflow-x-auto gap-2 pb-2">
+                {days.map((day) => {
+                  const completion =
+                    selectedChild !== 'parent' ? getDayCompletion(day, selectedChild) : null;
+                  return (
+                    <button
+                      key={day}
+                      onClick={() => setSelectedDay(day)}
+                      className={`flex-shrink-0 px-4 py-3 rounded-lg font-medium transition ${
+                        selectedDay === day
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      <div>{day}</div>
+                      {completion && (
+                        <div className="text-xs mt-1">
+                          {completion.completed}/{completion.total}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Tasks display */}
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <span className="text-indigo-600 text-xl">⏰</span>
+                {selectedDay} — {selectedChild === 'parent' ? 'All Tasks' : `${selectedChild}'s Tasks`}
+              </h2>
+
+              <div className="space-y-3">
+                {selectedChild === 'parent'
+                  ? (
+                    // Parent sees all children
+                    children.map((child) => {
+                      const childTasks = getChildTasksWithIndex(selectedDay, child);
+                      return (
+                        <div key={child} className="border-l-4 border-indigo-400 pl-4 mb-4">
+                          <h3 className="font-bold text-lg text-indigo-900 mb-2">{child}</h3>
+                          {childTasks.map((item) => {
+                            const taskKey = `${child}-${item._idx}`;
+                            const isCompleted = tasks[selectedDay]?.[taskKey];
+                            return (
+                              <div
+                                key={taskKey}
+                                className={`flex items-center gap-3 p-3 rounded-lg mb-2 transition ${
+                                  isCompleted
+                                    ? 'bg-green-50 border-2 border-green-300'
+                                    : 'bg-gray-50 border-2 border-gray-200'
+                                }`}
+                              >
+                                <div className="flex-shrink-0 w-20 text-sm font-medium text-indigo-600">
+                                  {item.time}
+                                </div>
+                                <div className={`flex-1 ${isCompleted ? 'line-through text-gray-500' : 'text-gray-800'}`}>
+                                  {item.task}
+                                </div>
+                                {isCompleted && <span className="text-green-600 text-xl">✔</span>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })
+                  )
+                  : (
+                    // Child sees only their tasks
+                    getChildTasksWithIndex(selectedDay, selectedChild).map((item) => {
+                      const taskKey = `${selectedChild}-${item._idx}`;
+                      const isCompleted = tasks[selectedDay]?.[taskKey];
+                      return (
+                        <div
+                          key={taskKey}
+                          className={`flex items-center gap-3 p-4 rounded-lg transition cursor-pointer ${
+                            isCompleted
+                              ? 'bg-green-50 border-2 border-green-400'
+                              : 'bg-gray-50 border-2 border-gray-300 hover:border-indigo-400'
+                          }`}
+                          onClick={() => toggleTask(selectedDay, selectedChild, item._idx)}
+                        >
+                          <div className="flex-shrink-0">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                              isCompleted ? 'bg-green-500' : 'bg-gray-300'
+                            }`}>
+                              <span className={isCompleted ? 'text-white' : 'text-gray-600'}>
+                                {isCompleted ? '✔' : '✖'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex-shrink-0 w-20 text-sm font-bold text-indigo-600">
+                            {item.time}
+                          </div>
+                          <div className={`flex-1 font-medium ${isCompleted ? 'line-through text-gray-500' : 'text-gray-800'}`}>
+                            {item.task}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )
+                }
+              </div>
+            </div>
+
+            {/* Info footer */}
+            <div className="mt-6 bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
+              <div className="flex items-start gap-2">
+                <span className="text-blue-600 text-xl mt-0.5">ℹ</span>
+                <div className="text-sm text-blue-800">
+                  <strong>How it works:</strong> Kids can click on their tasks to mark them done.
+                  Parents can view everyone's progress and reset the week when needed.
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<FamilyDutyCalendar />);
+    </script>
+  </body>
+</
